@@ -45,7 +45,7 @@ pre-integration cut at 0.30 (here) and a stricter post-integration cut at 0.25
 ### Integration (CellAssign → scVI → scANVI)
 
 Integration was performed once on a GPU cluster; the full integration code is
-included in the repository (`atlas/01_preprocess_qc/02_aggregate.py` … `07_process.py`).
+included in the repository (`atlas/01_preprocess_qc/03_preprocess_hvg.py` … `07_finalize.py`).
 Re-running it is computationally expensive and not required to reproduce downstream
 results — the integrated atlas object is deposited as an entry object — but the step
 is included so it can be independently re-executed. For integration, 4,000 highly variable genes were
@@ -489,7 +489,7 @@ is preserved as published (LIANA `seed = 1337`; TCGA bootstrap
 `set.seed(20260508)`). Scrublet, CopyKAT and k-means seeds were added during the
 reproducibility-hardening refactor where the original notebooks left them
 implicit. The scVI/scANVI integration code is included in the repository
-(`atlas/01_preprocess_qc/02_aggregate.py` … `07_process.py`) but, being an expensive GPU
+(`atlas/01_preprocess_qc/03_preprocess_hvg.py` … `07_finalize.py`) but, being an expensive GPU
 job, was not re-run as part of routine downstream reproduction; the canonical cohort comprises the 8 published
 whole HGSC tissues, the 97-patient TMA, and the 15 FTE cores (13 of which enter
 the spatial-clustering/polarization panels, per the FTE note above).
@@ -514,7 +514,7 @@ Voyager 1.10.0, scater/scran 1.36.0, ComplexHeatmap 2.24.1, data.table 1.18.4,
 arrow 24.0.0, tidyverse 2.0.0, ggplot2 4.0.3, singscore and GSVA (robustness).
 Integration (scVI/scANVI) was run with scvi-tools on an NVIDIA
 V100 GPU (CUDA 12.6.2); the integration code is included in the repository
-(`atlas/01_preprocess_qc/02_aggregate.py` … `07_process.py`). Organoid scRNA-seq was processed with Parse Biosciences
+(`atlas/01_preprocess_qc/03_preprocess_hvg.py` … `07_finalize.py`). Organoid scRNA-seq was processed with Parse Biosciences
 split-pipe 1.6.4 and Seurat v5; PDO doublets were removed with scDblFinder
 1.20.2.
 
@@ -555,7 +555,7 @@ publication.
 7. **Could not fully determine from code (flag for author):**
    (a) exact `n_perms` value passed to LIANA at production runtime (it is a CLI
    argument; the draft cites `n_perms = 100`); (b) some scVI/scANVI integration
-   hyperparameters in `atlas/01_preprocess_qc/02_aggregate.py` … `07_process.py` are
+   hyperparameters in `atlas/01_preprocess_qc/03_preprocess_hvg.py` … `07_finalize.py` are
    taken from the draft text / scvi-tools defaults (marked CONFIRM in that script)
    because the original cluster script was not in the working copy; (c) precise scFEA
    epochs/learning-rate (epochs = 100, lr = 0.008) are from the draft, run in a

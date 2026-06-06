@@ -16,7 +16,7 @@ so these resolve:
 | `sfe_tma_filtered` | `sfe/sfe_tma_filtered` | canonical TMA SpatialFeatureExperiment |
 | `sfe_dir` | `sfe/` | per-whole-tissue SFEs |
 
-The scVI/scANVI **integration is included in the repo** (the original cluster scripts `atlas/01_preprocess_qc/02_aggregate.py` … `07_process.py`):
+The scVI/scANVI **integration is included in the repo** (the original cluster scripts `atlas/01_preprocess_qc/03_preprocess_hvg.py` … `07_finalize.py`):
 the pipeline covers every step from raw data through final figures, including integration
 (CellAssign → scVI → scANVI). The integrated object is **deposited for convenience** so you can
 start downstream analysis from it directly, but it is **fully reproducible from raw data** via the
@@ -25,7 +25,7 @@ cluster job) and is not required to reproduce downstream results.
 
 ## The deposit also includes the analysis output caches
 
-Because the repo is **deposit-driven** (figure/table scripts read their inputs from `DATA_ROOT`,
+Because the repo is object-based (backend produces preprocessed objects that figures consume) (figure/table scripts read their inputs from `DATA_ROOT`,
 not from a freshly-run backend), the deposited bundle includes — alongside the entry objects —
 the per-stage **analysis output caches** the figures consume, preserving the original directory
 layout the scripts expect:

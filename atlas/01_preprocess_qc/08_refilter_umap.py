@@ -4,15 +4,15 @@ Atlas 01 — Step 08: re-filter doublets (threshold 0.25) + recompute UMAP
 
 PURPOSE
     Apply the stricter post-integration Scrublet filter (score < 0.25, was 0.275),
-    recompute neighbours/UMAP on the scANVI latent space, and write the canonical
-    downstream entry-point object. This consumes the deposited 20260213 integration
-    output (integrated_scanvi.h5ad). NOTE: how that object relates to the migrated
-    canonical-chain output (07_process / ovca_atlas_final.h5ad) is an OPEN
-    object-naming reconciliation flag — see this stage's README.
+    recompute neighbours/UMAP on the scANVI latent space (obsm["X_scanvi"]), and
+    write the canonical downstream entry-point object. This consumes
+    integrated_scanvi.h5ad produced by 07_finalize.py (--method scanvi), which emits
+    the matching lowercase obsm key "X_scanvi" read here.
 
 INPUTS
-    integrated_scanvi.h5ad  (deposited 20260213 integration output).
-        Resolved under DATA_ROOT/2026_final_atlas/pre-processing and integration/...
+    integrated_scanvi.h5ad  (scANVI integration output; written by 07_finalize.py,
+        or the deposited 20260213 run). Resolved under
+        DATA_ROOT/2026_final_atlas/pre-processing and integration/...
 
 OUTPUTS
     obj("atlas_scanvi")  = hgsc_atlas_scanvi.h5ad   (post-filter + UMAP; config entry-point)

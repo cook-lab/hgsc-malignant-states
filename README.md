@@ -32,19 +32,24 @@ loads a cache and renders a publication panel. Panel → script mapping is in `f
 
 ### Data flow
 
+The pipeline has two tiers:
+
+- **Backend** (`atlas/`, `spatial/`) — computationally heavy preprocessing and analysis (raw data
+  → integration → annotation → per-analysis results). It produces **standardized preprocessed
+  objects** (the integrated atlas, SFE objects, per-stage result tables and model fits).
+- **Downstream** (`figures/`, `tables/`) — lightweight scripts that load those objects and render
+  the manuscript panels and supplemental tables.
+
 ```
-  DEPOSITED DATA (set DATA_ROOT)                         OUTPUT_ROOT (./output, gitignored)
-  ├─ entry objects: atlas h5ad, SFE dirs        ──┐
-  └─ analysis output caches (per-stage tables,    │   figure scripts ──► output/figures/<figureN>/*.svg|png|pdf
-     GAM .rds, NMF/CNV/LIANA/survival outputs) ──┼──►  table scripts  ──► output/tables/*
-                                                  │   backend scripts ──► output/<stage>/*  (regeneration / verification)
+  atlas/ + spatial/  ──►  standardized objects  ──►  figures/ + tables/  ──►  output/
+   (heavy backend)         (atlas h5ad, SFEs,         (load object →           (panels,
+                            result tables/fits)        plot/export)             supp tables)
 ```
 
-The repo is **deposit-driven**: every figure and table script reads its inputs (entry
-objects *and* intermediate caches) from the **deposited data bundle** under `DATA_ROOT`, and
-writes only rendered outputs to `OUTPUT_ROOT`. You do **not** need to re-run the heavy backend
-to reproduce a figure. The `atlas/` and `spatial/` backend stages are provided to **regenerate
-and verify** those caches from the entry objects.
+Those backend objects are slow to regenerate (integration needs a GPU; some steps are many
+CPU-hours), so they are also **provided directly** (see `data/README.md`): set `DATA_ROOT` to the
+data bundle and you can reproduce any figure or table without re-running the backend. All rendered
+outputs go to `OUTPUT_ROOT` (`./output`).
 
 ### 1. Set up environments
 ```bash
@@ -84,13 +89,13 @@ To re-derive the intermediate caches from scratch (e.g. to verify reproducibilit
 backend stages **in numeric order**, which write to `OUTPUT_ROOT`:
 ```bash
 # Atlas (Python) — the full chain from raw data is included. atlas/01 runs:
-#   01_dataprep → 02_aggregate → 03_preprocess_hvg → 04_scvi → 05_cellassign → 06_scanvi
-#   → 07_process, with 02_concat_qc_doublets (QC+Scrublet) and 04b_harmony_comparison
-#   alongside, then 08_refilter_umap → 09 → 10.
-# Steps 04/05/06 (scVI → CellAssign → scANVI) are the ORIGINAL cluster scripts; they need a
-# GPU and are OPTIONAL: the integrated atlas object is deposited as an entry object, so you
-# can start downstream from 08. The integration code is included so every step is open to
-# scrutiny and can be re-executed.
+#   01_dataprep → 02_concat_qc_doublets (QC + Scrublet<0.3) → 03_preprocess_hvg →
+#   04_cellassign → {05a_scvi, 05b_scanvi, 05c_mrvi, 05d_sysvi, 05e_harmony} →
+#   06_benchmark → 07_finalize (--method scanvi) → 08_refilter_umap → 09 → 10.
+# Steps 03–07 are the OFFICIAL cluster scripts (5 integration methods benchmarked; scANVI
+# SELECTED). They need a GPU and are OPTIONAL: the integrated atlas object is deposited as an
+# entry object, so you can start downstream from 08. The integration code is included so every
+# step is open to scrutiny and can be re-executed.
 for s in atlas/01_preprocess_qc atlas/02_annotation atlas/03_epithelial_nmf atlas/04_functional \
          atlas/05_cnv atlas/06_cellcomm atlas/07_deconvolution_survival atlas/08_xenium_reference; do
   # run the numbered scripts within each stage in order (see each stage README)
@@ -106,10 +111,12 @@ Lee's L) are flagged. Stochastic steps are seeded from `config.seed` for determi
 
 ### Integration step (optional GPU re-run)
 The repository includes **every step from raw data through final figures, including
-multi-study integration** (scVI → CellAssign → scANVI). These are the **original cluster
-scripts** (`atlas_00_aggregate` … `atlas_05_process`), migrated as
-`atlas/01_preprocess_qc/02_aggregate.py` through `07_process.py` with only the hardcoded
-cluster paths replaced by central config — not reconstructions. Re-running the integration is
+multi-study integration**. These are the **official cluster scripts**
+(`01_preprocess` … `05_finalize`), migrated as `atlas/01_preprocess_qc/03_preprocess_hvg.py`
+through `07_finalize.py` with only the hardcoded cluster paths replaced by central config — not
+reconstructions. CellAssign labels (step 04) seed semi-supervised integration; **five methods
+are run and benchmarked** (scVI, scANVI, MrVI, SysVI, Harmony; step 06 scib-metrics), with
+**scANVI SELECTED** for the manuscript (step 07 `--method scanvi`). Re-running the integration is
 computationally expensive (originally run on a GPU cluster) and is **not required** to
 reproduce downstream results — the integrated atlas object (`hgsc_atlas_scanvi.h5ad`) is
 provided as a deposited entry object — but the integration code is included so that every
@@ -118,14 +125,15 @@ step is open to scrutiny and can be independently re-executed.
 ## Integration is included (optional to re-run)
 
 The repository includes the full pipeline from raw data through final figures, **including
-the multi-study integration** (scVI → CellAssign → scANVI), as the original cluster scripts
-(`atlas/01_preprocess_qc/02_aggregate.py` … `07_process.py`, path-centralised). Re-running it
-is computationally expensive (originally run on a GPU cluster) and is **not required** to
-reproduce downstream results — the integrated object (`hgsc_atlas_scanvi.h5ad`) is deposited as
-an entry object — but the code is included so every step can be independently scrutinized and
-re-executed. (See the `atlas/01_preprocess_qc/README.md` for two open reconciliation flags: the
-QC/Scrublet placement and the object-naming bridge between the migrated `atlas_05` output and the
-deposited integration object.)
+the multi-study integration**, as the official cluster scripts
+(`atlas/01_preprocess_qc/03_preprocess_hvg.py` … `07_finalize.py`, path-centralised). QC and
+per-sample Scrublet (< 0.3) are applied in `02_concat_qc_doublets.py`, whose output
+`atlas_concatenated_filtered.h5ad` is the raw input to the integration chain; five integration
+methods are benchmarked (step 06) and **scANVI is selected** (step 07 → `integrated_scanvi.h5ad`,
+obsm `X_scanvi`), feeding `08_refilter_umap.py` which writes the deposited `hgsc_atlas_scanvi.h5ad`.
+Re-running it is computationally expensive (originally run on a GPU cluster) and is **not
+required** to reproduce downstream results — the integrated object is deposited as an entry
+object — but the code is included so every step can be independently scrutinized and re-executed.
 
 ## Reproducibility status
 

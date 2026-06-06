@@ -6,10 +6,10 @@ PURPOSE
     Load each study's raw matrices (10x mtx / per-study h5ad / GEO supplements),
     map gene IDs to symbols (mygene), attach harmonised sample/clinical metadata
     from the atlas metadata sheet, and write one harmonised per-study h5ad. These
-    feed step 02 (concat + QC + doublets) in the QC lineage. The canonical
-    integration sub-sequence (steps 02_aggregate → 07_process, the original
-    cluster scripts) is a separate lineage; see this stage's README for how the
-    two relate (and the open QC/Scrublet-placement flag).
+    feed step 02 (concat + QC + Scrublet), whose output
+    atlas_concatenated_filtered.h5ad is the raw input to the official integration
+    chain (steps 03–07: preprocess → CellAssign → 5-method integration →
+    benchmark → finalize). See this stage's README.
 
 INPUTS
     DATA_ROOT/2026_final_atlas/raw/<study>/...        (raw per-study matrices; not deposited)

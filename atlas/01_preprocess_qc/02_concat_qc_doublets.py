@@ -7,22 +7,21 @@ PURPOSE
     gene intersection, enforce a common obs schema, apply per-cell QC cutoffs,
     drop low-cell samples, run Scrublet per sample, and filter doublets
     (score < 0.3). Produces the per-cell-QC'd, Scrublet-filtered concatenated
-    counts object. NOTE: the authoritative integration sub-sequence
-    (02_aggregate → 07_process) does NOT itself include per-cell QC / Scrublet;
-    where this QC step belongs relative to that lineage is an OPEN reconciliation
-    flag — see this stage's README.
+    counts object `atlas_concatenated_filtered.h5ad`. This IS the QC step of the
+    integration chain: the official 03_preprocess_hvg and 04_cellassign both read
+    this object directly (resolving the earlier QC-placement question).
 
 INPUTS
     DATA_ROOT/2026_final_atlas/processed/<study>.h5ad   (13 per-study objects from step 01)
 
 OUTPUTS
     DATA_ROOT/2026_final_atlas/processed/atlas_concat_counts_only_X.h5ad   (concatenated counts)
-    DATA_ROOT/2026_final_atlas/processed/atlas_concatenated_filtered.h5ad   (QC + Scrublet<0.3)
+    DATA_ROOT/2026_final_atlas/processed/atlas_concatenated_filtered.h5ad   (QC + Scrublet<0.3;
+        the raw counts object consumed by 03_preprocess_hvg, 04_cellassign and 07_finalize)
     output_root/01_preprocess_qc/02_qc/*.svg  (QC violins)
 
 MANUSCRIPT PANEL(S)
-    Pre-integration provenance; no panel rendered directly. The integration that
-    consumes atlas_concatenated_filtered.h5ad is NOT reproduced here.
+    Pre-integration provenance; no panel rendered directly.
 
 RUNTIME TIER
     heavy (concatenation of ~13 study matrices; per-sample Scrublet).
@@ -256,4 +255,4 @@ adata_concat.obs["sample_id"] = adata_concat.obs["sample_id"].astype(str)
 adata_concat.obs["sample_num"] = adata_concat.obs["sample_num"].astype(str)
 
 adata_concat.write_h5ad(FILTERED_PATH)
-print(f"Done — wrote {FILTERED_PATH} (QC/Scrublet-filtered concat; see README QC-placement flag)")
+print(f"Done — wrote {FILTERED_PATH} (QC/Scrublet-filtered concat; INPUT to 03_preprocess_hvg & 04_cellassign)")
