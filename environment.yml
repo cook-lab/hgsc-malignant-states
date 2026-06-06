@@ -1,0 +1,45 @@
+# Conda environment for the HGSC epitype DOWNSTREAM (Python) analyses.
+# Trust boundary: scVI/scANVI integration is NOT re-run here, so scvi-tools/torch
+# are intentionally excluded from the base env (added only if 03b needs to re-derive
+# latent space — it should only recompute UMAP from the stored scANVI embedding).
+# Version pins follow the manuscript Methods (Claims Ledger §methods).
+name: epitype-py
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.12.3
+  - pip
+  # --- core scientific stack ---
+  # numpy<2 + numba 0.59 required: decoupler 1.4.0's (unused) GSVA jit code breaks on
+  # numpy>=2 / numba>=0.61. anndata 0.12.2 needs numpy>=1.26, so 1.26.4 satisfies all.
+  - numpy=1.26.4
+  - numba=0.59
+  - pandas
+  - scipy
+  - matplotlib
+  - seaborn
+  - pyarrow            # parquet caches (11v2/21/fig_secretory_polarization)
+  # --- single-cell ---
+  - scanpy=1.11.4
+  - anndata=0.12.2
+  - leidenalg          # Leiden clustering (07_resolution_explorer)
+  - python-igraph
+  - umap-learn
+  - scikit-learn       # GMM (11v4), kmeans, multinomial logistic + AUROC (19_cnv_independence)
+  - statsmodels
+  - scikit-misc        # scanpy HVG seurat_v3 flavor
+  # --- pathway / functional inference ---
+  - decoupler          # PROGENy, Hallmark, DoRothEA (MLM)
+  # --- survival (python side) ---
+  - pip:
+      - liana>=1.6.0   # cell-cell communication (14/17b-d)
+      - lifelines      # survival_analysis (22c/22d/22f)
+      - mygene==3.2.2  # gene-symbol harmonization (atlas construction; upstream)
+      - scrublet==0.2.3
+      - torch          # REQUIRED by step 21 (scFEA metabolic flux, Fig 2A flux ring / SF8) — 21 does `import torch` at top
+      - magic-impute   # scFEA dependency
+# NOTE (handled separately, flagged for the orchestrator):
+#   - scFEA metabolic flux (Fig 2A flux ring, SF8) needs its own torch-based sub-env;
+#     vendored at 2026_final_atlas/tools/scFEA. Build `epitype-scfea` only when reaching step 21/Fig2A.
+#   - CopyKAT, BayesPrism, RCTD, SingleR, UCell, mgcv, spdep, spatstat, Voyager are R (see renv).

@@ -1,0 +1,17 @@
+# Large data objects & outputs are NOT version-controlled (deposited to GEO/Zenodo)
+output/
+data/*
+!data/README.md
+*.h5ad
+*.rds
+*.parquet
+*.h5
+# R/Python env + OS cruft
+renv/library/
+.Rhistory
+.RData
+__pycache__/
+*.pyc
+.DS_Store
+._*
+Rplots.pdf

@@ -1,0 +1,271 @@
+#!/usr/bin/env python3
+"""
+Figure 4A,B — Per-patient composition (hclust dendrogram) + aggregate donuts
+============================================================================
+PURPOSE
+    Per-patient stacked-bar cell-type composition with a ward.D2 hclust
+    dendrogram on top and a tissue annotation strip; three aggregate
+    mean-composition donuts (Fallopian tube / whole tissue / TMA) on the right.
+    Epithelial labels come from the 06f polarization reclassification.
+
+INPUTS
+    - output_root/figures/cell_type_counts_by_sample.csv   (non-epithelium counts)
+    - output_root/06f_reclassification_polarization/reclassified_xenium_scores.csv
+    - output_root/figures/tma_core_patient_map.csv         (TMA core -> patient)
+    - output_root/metadata/tma_barcode_patient_map.csv     (TMA barcode -> patient/type)
+
+OUTPUTS
+    - figures_dir/xenium_composition_by_tissue_dendro.{png,svg}
+
+MANUSCRIPT PANEL(S): Fig 4A (dendrogram + bars), Fig 4B (donuts).
+
+RUNTIME TIER: moderate.
+
+NOTE: epithelial label standardized "Transitioning" -> "Intermediate".
+"""
+from __future__ import annotations
+
+import os
+import sys
+import time
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
+from matplotlib import gridspec
+from scipy.cluster.hierarchy import linkage, leaves_list, dendrogram as scipy_dendro
+from scipy.spatial.distance import pdist
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from config.config import path  # noqa: E402
+
+# ---------- Paths ----------
+OLD_COMP_CSV = path("output_root", "figures", "cell_type_counts_by_sample.csv")
+XEN_06F_CSV = path("output_root", "06f_reclassification_polarization",
+                   "reclassified_xenium_scores.csv")
+CORE_MAP = path("output_root", "figures", "tma_core_patient_map.csv")
+BC_MAP = path("output_root", "metadata", "tma_barcode_patient_map.csv")
+STEM = "xenium_composition_by_tissue_dendro"
+
+# ---------- Palette & order ----------
+CELL_ORDER = [
+    "SecA epithelium", "Intermediate epithelium", "SecB epithelium",
+    "Ciliated epithelium", "Mesothelial", "Fibroblast", "Smooth muscle",
+    "Pericyte", "Endothelial", "T cell", "NK cell", "B cell", "Plasma cell",
+    "Macrophage", "Conventional dendritic cell", "Neutrophil", "Mast cell",
+    "Plasmacytoid dendritic cell",
+]
+REF_PALETTE = {
+    "SecA epithelium": "#E6A141", "Intermediate epithelium": "#C08E48",
+    "SecB epithelium": "#9A7D55", "Ciliated epithelium": "#E07850",
+    "Mesothelial": "#D4A574", "Fibroblast": "#DDD5CA", "Smooth muscle": "#D14E6C",
+    "Pericyte": "#B87A7A", "Endothelial": "#7D4E4E", "T cell": "#87CEFA",
+    "NK cell": "#56AFC4", "B cell": "#5665B6", "Plasma cell": "#8A5DAF",
+    "Macrophage": "#8FBC8F", "Conventional dendritic cell": "#2E8B57",
+    "Neutrophil": "#6B8E23", "Mast cell": "#8B9B6B",
+    "Plasmacytoid dendritic cell": "#A0A0A0",
+}
+EPI_LABELS = {"SecA epithelium", "Intermediate epithelium", "SecB epithelium"}
+
+TISSUE_ORDER = ["Fallopian tube", "HGSC whole tissue", "HGSC TMA"]
+TISSUE_COLORS = {"Fallopian tube": "#E07850", "HGSC TMA": "#D4A574",
+                 "HGSC whole tissue": "#8A5DAF"}
+TISSUE_SHORT = {"Fallopian tube": "Fallopian tube", "HGSC whole tissue": "Whole tissue",
+                "HGSC TMA": "TMA"}
+
+# ---------- Style ----------
+FA, FK, FN, FL = 7, 6, 6, 6
+plt.rcParams.update({
+    "font.family":       "sans-serif",
+    "font.sans-serif":   ["Arial", "Helvetica", "DejaVu Sans"],
+    "font.size":         FK,
+    "axes.titlesize":    FA,
+    "axes.labelsize":    FA,
+    "xtick.labelsize":   FK,
+    "ytick.labelsize":   FK,
+    "legend.fontsize":   FL,
+    "figure.dpi":        450,
+    "savefig.dpi":       450,
+    "pdf.fonttype":      42,
+    "svg.fonttype":      "none",
+    "savefig.bbox":      "tight",
+    "axes.linewidth":    0.5,
+    "xtick.major.width": 0.5,
+    "ytick.major.width": 0.5,
+})
+
+
+def main():
+    t0 = time.time()
+    print(f"  {STEM}\n")
+
+    comp = pd.read_csv(OLD_COMP_CSV)
+    core_map = pd.read_csv(CORE_MAP)
+    core_map["core_id"] = core_map["core_id"].astype(str)
+
+    non_epi = comp[~comp["cell_label"].isin(EPI_LABELS)].copy()
+    wt = non_epi[non_epi["tissue_type"] == "HGSC whole tissue"].copy()
+    wt["patient_id"] = wt["sample_id"]
+
+    tma = non_epi[non_epi["tissue_type"] != "HGSC whole tissue"].copy()
+    tma["core_id"] = tma["sample_id"].astype(str)
+    tma = tma.merge(core_map[["core_id", "patient_id"]], on="core_id", how="left")
+    tma = tma[tma["patient_id"].notna()].copy()
+    tma["patient_id"] = tma["patient_id"].astype(int).astype(str)
+
+    non_epi_pat = (pd.concat([
+        wt[["patient_id", "tissue_type", "cell_label", "n"]],
+        tma[["patient_id", "tissue_type", "cell_label", "n"]],
+    ]).groupby(["patient_id", "tissue_type", "cell_label"], as_index=False)["n"].sum())
+
+    xen = pd.read_csv(XEN_06F_CSV, usecols=["barcode_orig", "sample", "cell_label_06f"])
+    wt_x = xen[xen["sample"] != "sfe_tma"].copy()
+    wt_x["patient_id"] = wt_x["sample"].str.replace("sfe_", "", regex=False)
+    wt_x["tissue_type"] = "HGSC whole tissue"
+
+    tma_x = xen[xen["sample"] == "sfe_tma"].copy()
+    bc_map = pd.read_csv(BC_MAP)
+    tma_x = tma_x.merge(bc_map[["barcode_orig", "patient_id", "sample_type"]],
+                        on="barcode_orig", how="left")
+    tma_x = tma_x[tma_x["patient_id"].notna()].copy()
+    tma_x["patient_id"] = tma_x["patient_id"].astype(int).astype(str)
+    tma_x["tissue_type"] = np.where(tma_x["sample_type"] == "fallopian",
+                                    "Fallopian tube", "HGSC TMA")
+
+    epi_pat = (pd.concat([
+        wt_x[["patient_id", "tissue_type", "cell_label_06f"]],
+        tma_x[["patient_id", "tissue_type", "cell_label_06f"]],
+    ]).rename(columns={"cell_label_06f": "cell_label"})
+      .groupby(["patient_id", "tissue_type", "cell_label"], as_index=False)
+      .size().rename(columns={"size": "n"}))
+
+    full = pd.concat([non_epi_pat, epi_pat], ignore_index=True)
+    pt_tis = full.groupby(["patient_id", "tissue_type"], as_index=False)["n"].sum()
+    grid = pt_tis[["patient_id", "tissue_type"]].merge(
+        pd.DataFrame({"cell_label": CELL_ORDER}), how="cross")
+    full = grid.merge(full, on=["patient_id", "tissue_type", "cell_label"],
+                      how="left").fillna({"n": 0})
+    full["n"] = full["n"].astype(int)
+    full["total"] = full.groupby(["patient_id", "tissue_type"])["n"].transform("sum")
+    full = full[full["total"] > 0].copy()
+    full["proportion"] = full["n"] / full["total"]
+    full["bar"] = full["patient_id"].astype(str) + "|" + full["tissue_type"]
+    n_bars = full["bar"].nunique()
+    print(f"  bars: {n_bars}")
+
+    mat = (full.pivot_table(index="bar", columns="cell_label",
+                            values="proportion", fill_value=0)
+               .reindex(columns=CELL_ORDER, fill_value=0))
+    d = pdist(mat.values, metric="euclidean")
+    Z = linkage(d, method="ward")
+    ordered_bars = list(mat.index[leaves_list(Z)])
+
+    bar_to_tissue = dict(zip(full["bar"], full["tissue_type"]))
+    tissue_counts = {t: sum(1 for b in ordered_bars if bar_to_tissue[b] == t)
+                     for t in TISSUE_ORDER}
+    print(f"  tissue breakdown: {tissue_counts}")
+
+    props = mat.reindex(index=ordered_bars)
+
+    full_tissue = full.copy()
+    agg = (full_tissue.groupby(["tissue_type", "cell_label"], as_index=False)
+           .apply(lambda g: pd.Series({"mean_prop": g["proportion"].mean()}),
+                  include_groups=False))
+    for t in TISSUE_ORDER:
+        mask = agg["tissue_type"] == t
+        s = agg.loc[mask, "mean_prop"].sum()
+        if s > 0:
+            agg.loc[mask, "mean_prop"] /= s
+
+    print("\n  Rendering ...")
+    fig = plt.figure(figsize=(8.5, 3.0))
+    gs = gridspec.GridSpec(2, 2, figure=fig, width_ratios=[3.8, 1.0],
+                           height_ratios=[0.6, 3.0], hspace=0.02, wspace=0.15,
+                           left=0.05, right=0.82, top=0.96, bottom=0.05)
+    ax_dend = fig.add_subplot(gs[0, 0])
+    ax_bar = fig.add_subplot(gs[1, 0])
+    ax_don = fig.add_subplot(gs[:, 1])
+
+    scipy_dendro(Z, no_labels=True, ax=ax_dend, leaf_rotation=0, color_threshold=0,
+                 above_threshold_color="black", count_sort=False, distance_sort=False)
+    scipy_lo = 5.0
+    scipy_hi = 5.0 + 10.0 * (n_bars - 1)
+    for coll in ax_dend.collections:
+        coll.set_linewidth(0.4)
+        for p in coll.get_paths():
+            verts = p.vertices
+            verts[:, 0] = (verts[:, 0] - scipy_lo) / (scipy_hi - scipy_lo) * (n_bars - 1)
+    ax_dend.set_xlim(-0.5, n_bars - 0.5)
+    ax_dend.set_xticks([]); ax_dend.set_yticks([])
+    for spine in ax_dend.spines.values():
+        spine.set_visible(False)
+
+    x = np.arange(n_bars)
+    bottoms = np.zeros(n_bars)
+    for ct in CELL_ORDER:
+        y = props[ct].values
+        ax_bar.bar(x, y, bottom=bottoms, width=1.0, color=REF_PALETTE[ct],
+                   edgecolor="none", linewidth=0, label=ct)
+        bottoms += y
+
+    strip_y, strip_h = -0.035, 0.03
+    for i, b in enumerate(ordered_bars):
+        t = bar_to_tissue[b]
+        ax_bar.add_patch(plt.Rectangle((i - 0.5, strip_y), 1.0, strip_h,
+                                       facecolor=TISSUE_COLORS[t], edgecolor="none"))
+    ax_bar.set_xlim(-0.5, n_bars - 0.5)
+    ax_bar.set_ylim(strip_y - 0.01, 1.002)
+    ax_bar.set_xticks([])
+    ax_bar.set_yticks([0, 0.25, 0.5, 0.75, 1.0])
+    ax_bar.set_yticklabels(["0%", "25%", "50%", "75%", "100%"])
+    ax_bar.set_ylabel("Cell type proportion")
+    for s in ("top", "right", "bottom"):
+        ax_bar.spines[s].set_visible(False)
+    ax_bar.tick_params(axis="y", length=2, pad=1.5)
+    ax_dend.set_xlim(ax_bar.get_xlim())
+
+    ax_don.set_axis_off()
+    ring_width = 0.45
+    donut_positions = [0.78, 0.45, 0.12]
+    for idx, t in enumerate(TISSUE_ORDER):
+        sub = agg[agg["tissue_type"] == t].copy()
+        sub["cell_label"] = pd.Categorical(sub["cell_label"], categories=CELL_ORDER)
+        sub = sub.sort_values("cell_label")
+        vals = sub["mean_prop"].values
+        colors = [REF_PALETTE[c] for c in sub["cell_label"]]
+        yc = donut_positions[idx]
+        inset = fig.add_axes([0.82, yc - 0.10, 0.16, 0.20])
+        inset.pie(vals, colors=colors, startangle=90, counterclock=False,
+                  wedgeprops=dict(width=ring_width, edgecolor="none", linewidth=0))
+        inset.text(0, 0, f"{TISSUE_SHORT[t]}\nn={tissue_counts[t]}", ha="center",
+                   va="center", fontsize=FN, linespacing=0.95)
+    fig.text(0.90, 0.97, "Mean composition", ha="center", va="top", fontsize=FA)
+
+    tissue_handles = [Patch(facecolor=TISSUE_COLORS[t], edgecolor="none",
+                            label=f"{t} (n={tissue_counts[t]})") for t in TISSUE_ORDER]
+    leg_tissue = ax_bar.legend(handles=tissue_handles, title="Tissue",
+                               bbox_to_anchor=(1.01, 1.0), loc="upper left",
+                               frameon=False, fontsize=FL, title_fontsize=FL,
+                               handlelength=1.2, handleheight=0.8, borderpad=0.2,
+                               labelspacing=0.3)
+    ax_bar.add_artist(leg_tissue)
+    ax_bar.legend(handles=[Patch(facecolor=REF_PALETTE[c], edgecolor="none", label=c)
+                           for c in CELL_ORDER], title="Cell type",
+                  bbox_to_anchor=(1.01, 0.72), loc="upper left", frameon=False,
+                  fontsize=FL, title_fontsize=FL, handlelength=1.2, handleheight=0.8,
+                  borderpad=0.2, labelspacing=0.25)
+
+    out_png = path("figures_dir", f"{STEM}.png")
+    out_svg = path("figures_dir", f"{STEM}.svg")
+    fig.savefig(out_png, dpi=450, bbox_inches="tight")
+    fig.savefig(out_svg, bbox_inches="tight")
+    plt.close(fig)
+    print(f"\n  -> {out_png}\n  -> {out_svg}\n  Done in {time.time()-t0:.1f}s")
+
+
+if __name__ == "__main__":
+    main()

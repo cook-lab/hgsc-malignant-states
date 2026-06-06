@@ -1,0 +1,52 @@
+# Central configuration for the HGSC malignant-states analysis.
+# SINGLE SOURCE OF TRUTH for paths, cohort definitions, seeds, and signatures.
+# Replaces the hardcoded /Volumes/CookLab/Sarah/... paths from the original analysis.
+#
+# Override DATA_ROOT / OUTPUT_ROOT via environment variables of the same name,
+# or edit here. Point DATA_ROOT at wherever the deposited objects live
+# (locally, or the GEO/Zenodo download).
+
+paths:
+  # Root holding the large input objects (atlas h5ad, SFE dirs). NOT shipped in the repo.
+  data_root:   "${DATA_ROOT:-/Volumes/Nosepass/Epitype_Project}"
+  # Where pipeline outputs (tables, intermediate caches, figures) are written.
+  output_root: "${OUTPUT_ROOT:-./output}"
+  figures_dir: "${OUTPUT_ROOT:-./output}/figures"
+
+# Entry-point objects (relative to data_root). Integration is the TRUST BOUNDARY
+# (scVI/scANVI run on a cluster; not reproduced here — these objects are the inputs).
+objects:
+  atlas_scanvi:       "2026_final_atlas/hgsc_atlas_scanvi.h5ad"        # integration output (trust boundary)
+  atlas_celltype_l2:  "2026_final_atlas/hgsc_atlas_celltype_level2.h5ad"
+  atlas_final:        "2026_final_atlas/hgsc_atlas_final.h5ad"          # canonical downstream entry-point
+  atlas_epithelial:   "2026_final_atlas/hgsc_atlas_epithelial.h5ad"
+  atlas_celltype_dir: "2026_final_atlas/celltype_h5ad"                  # per-celltype subsets
+  xenium_ref:         "2026_final_atlas/output/xenium_celltype/xenium_celltype_downsampled.h5ad"  # SingleR reference (canonical copy)
+  sfe_tma_filtered:   "2026_final_xenium_analysis/output/sfe/sfe_tma_filtered"   # canonical TMA entry-point
+  sfe_dir:            "2026_final_xenium_analysis/output/sfe"
+  # External organoid (PDO) substrate — Fig 3. LIVE EXTERNAL DEPENDENCY: the PDO
+  # data are NOT part of this monorepo's deposited objects (see docs/REPRODUCIBILITY.md).
+  # Override ORGANOIDS_ROOT to point at wherever the 2026_organoids tree lives.
+  organoids_root:     "${ORGANOIDS_ROOT:-2026_organoids}"
+  # Figure-data caches written by the manuscript figure-prep helpers (figures/_prep/).
+  # These are intermediate parquet/CSV caches, not deposited primary objects.
+  fig_data_dir:       "${FIG_DATA_ROOT:-2026_final_atlas/output/fig_secretory_polarization/data}"
+
+# Reproducibility: global seed applied wherever stochastic steps were previously unseeded
+# (xenium 06f/06g cell-labeling, ConsensusOV RF, NMF inits, subsampling).
+seed: 42
+
+# Published cohort (pin to the preprint; excludes the 2 FTE whole-tissue samples
+# added post-preprint that caused cohort drift — see docs/REPRODUCIBILITY.md).
+cohort:
+  whole_tissue:   [OTB_2384, OTB_2417, OTB_2432, OTB_2454, OTB_2457, OTB_2461, SP24_24824, SP24_25573]
+  fte_exclude_wt: [FT1-1, EAOC-1-FTE]   # FTE whole-tissue: NOT part of the published whole-tissue arm
+  tma_patients:   97
+  fte_tma_cores:  15
+
+# Epithelial polarization schema (canonical = NMF Factor-2 percentile partition).
+# Labels standardized: "Intermediate" (was "Transitioning" in some original scripts).
+polarization:
+  factor: "Factor_2"                 # SecB-defining NMF factor
+  partition: {SecA: "<p50", Intermediate: "p50-p75", SecB: ">=p75"}
+  labels: [SecA, Intermediate, SecB, Ciliated]
