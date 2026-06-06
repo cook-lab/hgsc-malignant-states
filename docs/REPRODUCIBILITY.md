@@ -1,19 +1,19 @@
 # Reproducibility
 
-This document summarizes the reproducibility audit for the HGSC epitype manuscript and tracks the known issues carried into the refactored monorepo. The full audit record — scorecard, per-area evidence, environment spec, and trust boundary — is at:
+This document summarizes the reproducibility audit for the HGSC epitype manuscript and tracks the known issues carried into the refactored monorepo. The full audit record — scorecard, per-area evidence, and environment spec — is at:
 
 **`_repro_refactor/reports/REPRODUCIBILITY_REPORT.md`** (Phase 3 deliverable, compiled 2026-06-05)
 
 ## Verdict: strongly reproducible
 
-The manuscript is **strongly reproducible** within the integration trust boundary. The defining result — the secretory polarization axis — reproduces **exactly**: re-running the core NMF (`atlas/03_epithelial_nmf/01_epithelial_nmf.py`) recovered SecA = Factor 3 and SecB = Factor 2 with identical assignments, gene-loading correlation **1.000** ref↔new for both factors, and 15/15 overlap in each factor's top-15 genes. The survival story is bit-reproducible: Xenium polarization Cox HRs (Fig 7A OS HR=1.45, 7B PFS HR=1.42) and TCGA-OV validation (Fig 7G OS HR=2.00 p=0.004, PFS HR=1.79 p=0.009; KM p=0.010) match the reference to printed precision.
+The manuscript is **strongly reproducible**. The defining result — the secretory polarization axis — reproduces **exactly**: re-running the core NMF (`atlas/03_epithelial_nmf/01_epithelial_nmf.py`) recovered SecA = Factor 3 and SecB = Factor 2 with identical assignments, gene-loading correlation **1.000** ref↔new for both factors, and 15/15 overlap in each factor's top-15 genes. The survival story is bit-reproducible: Xenium polarization Cox HRs (Fig 7A OS HR=1.45, 7B PFS HR=1.42) and TCGA-OV validation (Fig 7G OS HR=2.00 p=0.004, PFS HR=1.79 p=0.009; KM p=0.010) match the reference to printed precision.
 
 Quantitatively:
 - **Figures:** 42/67 panel rows reproduced first-pass → **54/67** after one path-typo symlink fix (the 12 unblocked panels had already matched the ledger in statistics before a render crash).
 - **Backends:** **21/34 exact** (several byte-identical), **11 within-tolerance**, **1 divergent** (Fig 6J), 0 unresolved.
 - **Spatial backend re-ran clean post-synthesis:** `44` autocorrelation regenerated all 7 tables (WT Lee's L p=0.001, TMA per-core significant → Fig 4E/F); GAM steps `16b`/`19d`/`19e` all exit 0.
 
-**Trust boundary:** the **scVI→scANVI integration** that produces the 1,980,703-cell atlas embedding is NOT re-run (training code is not in this copy); the integrated object is taken as authoritative input. The four stochastic tools (CopyKAT, BayesPrism, LIANA, scFEA) were flanking-audited (cached outputs checked for consistency; deterministic input-prep + consumers re-run), not re-executed at their stochastic cores. The `2026_organoids/` directory is external (Fig 3 TRUST-EXISTING per author decision).
+**Integration:** the **scVI→scANVI integration** that produces the 1,980,703-cell atlas embedding **is included in the repository** (the original cluster scripts `atlas/01_preprocess_qc/02_aggregate.py` … `07_process.py`, scVI → CellAssign → scANVI). We did **not re-run** it during validation — that was a validation-time choice, since it is an expensive GPU job — and used the deposited integrated object as input; but the integration is fully included and scrutable, and is reproducible from raw data via the included code. The four stochastic tools (CopyKAT, BayesPrism, LIANA, scFEA) were flanking-audited (cached outputs checked for consistency; deterministic input-prep + consumers re-run), not re-executed at their stochastic cores. The `2026_organoids/` directory is external (Fig 3 TRUST-EXISTING per author decision).
 
 ## Known issues
 

@@ -1,7 +1,6 @@
 # Conda environment for the HGSC epitype DOWNSTREAM (Python) analyses.
-# Trust boundary: scVI/scANVI integration is NOT re-run here, so scvi-tools/torch
-# are intentionally excluded from the base env (added only if 03b needs to re-derive
-# latent space — it should only recompute UMAP from the stored scANVI embedding).
+# Integration (scVI/scANVI, CellAssign) IS included in the pipeline (atlas/01); scvi-tools+torch
+# are required to re-run it. Re-running is GPU-heavy and optional (integrated object is deposited).
 # Version pins follow the manuscript Methods (Claims Ledger §methods).
 name: epitype-py
 channels:

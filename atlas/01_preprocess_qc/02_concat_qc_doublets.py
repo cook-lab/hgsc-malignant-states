@@ -6,8 +6,11 @@ PURPOSE
     Concatenate the harmonised per-study count matrices (from step 01) on their
     gene intersection, enforce a common obs schema, apply per-cell QC cutoffs,
     drop low-cell samples, run Scrublet per sample, and filter doublets
-    (score < 0.3). Produces the concatenated counts object that is the INPUT to
-    the scVI/scANVI integration trust boundary (see this stage's README).
+    (score < 0.3). Produces the per-cell-QC'd, Scrublet-filtered concatenated
+    counts object. NOTE: the authoritative integration sub-sequence
+    (02_aggregate → 07_process) does NOT itself include per-cell QC / Scrublet;
+    where this QC step belongs relative to that lineage is an OPEN reconciliation
+    flag — see this stage's README.
 
 INPUTS
     DATA_ROOT/2026_final_atlas/processed/<study>.h5ad   (13 per-study objects from step 01)
@@ -253,4 +256,4 @@ adata_concat.obs["sample_id"] = adata_concat.obs["sample_id"].astype(str)
 adata_concat.obs["sample_num"] = adata_concat.obs["sample_num"].astype(str)
 
 adata_concat.write_h5ad(FILTERED_PATH)
-print(f"Done — wrote {FILTERED_PATH} (input to the integration trust boundary)")
+print(f"Done — wrote {FILTERED_PATH} (QC/Scrublet-filtered concat; see README QC-placement flag)")

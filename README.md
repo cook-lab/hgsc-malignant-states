@@ -83,7 +83,14 @@ PYTHONPATH=. python tables/<NN>_*.py   ;   Rscript tables/<NN>_*.R
 To re-derive the intermediate caches from scratch (e.g. to verify reproducibility), run the
 backend stages **in numeric order**, which write to `OUTPUT_ROOT`:
 ```bash
-# Atlas (Python) — start from the integrated object (integration itself is the trust boundary):
+# Atlas (Python) — the full chain from raw data is included. atlas/01 runs:
+#   01_dataprep → 02_aggregate → 03_preprocess_hvg → 04_scvi → 05_cellassign → 06_scanvi
+#   → 07_process, with 02_concat_qc_doublets (QC+Scrublet) and 04b_harmony_comparison
+#   alongside, then 08_refilter_umap → 09 → 10.
+# Steps 04/05/06 (scVI → CellAssign → scANVI) are the ORIGINAL cluster scripts; they need a
+# GPU and are OPTIONAL: the integrated atlas object is deposited as an entry object, so you
+# can start downstream from 08. The integration code is included so every step is open to
+# scrutiny and can be re-executed.
 for s in atlas/01_preprocess_qc atlas/02_annotation atlas/03_epithelial_nmf atlas/04_functional \
          atlas/05_cnv atlas/06_cellcomm atlas/07_deconvolution_survival atlas/08_xenium_reference; do
   # run the numbered scripts within each stage in order (see each stage README)
@@ -97,16 +104,28 @@ with its ordered scripts and input→output map. **Runtime tiers** are in each s
 (fast / moderate / heavy); the heavy steps (CopyKAT, LIANA, BayesPrism, scFEA, per-sample GAMs,
 Lee's L) are flagged. Stochastic steps are seeded from `config.seed` for determinism.
 
-### Trust boundary
-The scVI→scANVI **integration is not re-executed** (cluster job; training code not included).
-The integrated object (`hgsc_atlas_scanvi.h5ad`) is an entry object; everything downstream is
-reproducible from the deposited bundle.
+### Integration step (optional GPU re-run)
+The repository includes **every step from raw data through final figures, including
+multi-study integration** (scVI → CellAssign → scANVI). These are the **original cluster
+scripts** (`atlas_00_aggregate` … `atlas_05_process`), migrated as
+`atlas/01_preprocess_qc/02_aggregate.py` through `07_process.py` with only the hardcoded
+cluster paths replaced by central config — not reconstructions. Re-running the integration is
+computationally expensive (originally run on a GPU cluster) and is **not required** to
+reproduce downstream results — the integrated atlas object (`hgsc_atlas_scanvi.h5ad`) is
+provided as a deposited entry object — but the integration code is included so that every
+step is open to scrutiny and can be independently re-executed.
 
-## Trust boundary
+## Integration is included (optional to re-run)
 
-The scVI/scANVI **integration was run on a compute cluster and is not re-executed here**; its
-output (`hgsc_atlas_scanvi.h5ad`) is the entry point for all downstream analysis. Everything
-downstream of integration runs locally and is reproducible from the deposited objects.
+The repository includes the full pipeline from raw data through final figures, **including
+the multi-study integration** (scVI → CellAssign → scANVI), as the original cluster scripts
+(`atlas/01_preprocess_qc/02_aggregate.py` … `07_process.py`, path-centralised). Re-running it
+is computationally expensive (originally run on a GPU cluster) and is **not required** to
+reproduce downstream results — the integrated object (`hgsc_atlas_scanvi.h5ad`) is deposited as
+an entry object — but the code is included so every step can be independently scrutinized and
+re-executed. (See the `atlas/01_preprocess_qc/README.md` for two open reconciliation flags: the
+QC/Scrublet placement and the object-naming bridge between the migrated `atlas_05` output and the
+deposited integration object.)
 
 ## Reproducibility status
 

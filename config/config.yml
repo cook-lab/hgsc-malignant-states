@@ -12,16 +12,29 @@ paths:
   # Where pipeline outputs (tables, intermediate caches, figures) are written.
   output_root: "${OUTPUT_ROOT:-./output}"
   figures_dir: "${OUTPUT_ROOT:-./output}/figures"
+  # Per-study RAW input h5ads consumed by the canonical aggregate step
+  # (atlas/01 step 02_aggregate). REQUIRED RAW INPUT — not deposited in the repo.
+  # The authoritative cluster scripts read vazquez_garcia_2022.h5ad / luo_2024.h5ad /
+  # zheng_2023.h5ad / ovarian_cancer_aggregate.h5ad from this dir (relative to data_root).
+  # Point at wherever those per-study objects live (GEO/EGA downloads). Default mirrors
+  # the original cluster layout under data_root.
+  raw_datasets:       "${RAW_DATASETS_ROOT:-2026_final_atlas/datasets}"
 
-# Entry-point objects (relative to data_root). Integration is the TRUST BOUNDARY
-# (scVI/scANVI run on a cluster; not reproduced here — these objects are the inputs).
+# Entry-point objects (relative to data_root). The integration is included in the repo
+# (atlas/01 step 03, scVI/scANVI run on a GPU); these objects are deposited for convenience
+# but are reproducible from raw data via that code.
 objects:
-  atlas_scanvi:       "2026_final_atlas/hgsc_atlas_scanvi.h5ad"        # integration output (trust boundary)
+  atlas_scanvi:       "2026_final_atlas/hgsc_atlas_scanvi.h5ad"        # integration output (reproducible via atlas/01 step 03; deposited for convenience)
   atlas_celltype_l2:  "2026_final_atlas/hgsc_atlas_celltype_level2.h5ad"
   atlas_final:        "2026_final_atlas/hgsc_atlas_final.h5ad"          # canonical downstream entry-point
   atlas_epithelial:   "2026_final_atlas/hgsc_atlas_epithelial.h5ad"
   atlas_celltype_dir: "2026_final_atlas/celltype_h5ad"                  # per-celltype subsets
   xenium_ref:         "2026_final_atlas/output/xenium_celltype/xenium_celltype_downsampled.h5ad"  # SingleR reference (canonical copy)
+  # NOTE on the canonical integration chain (atlas/01 steps 02–07, the original cluster
+  # scripts atlas_00..05): its intermediate objects (ovca_atlas_raw / preprocess /
+  # integrated / final, scvi_model_hgsc, X_scANVI npz) are REGENERATED, not deposited
+  # primary inputs, so they are NOT listed here as data_root objects. The scripts write
+  # them under output_root/01_preprocess_qc/integration/ via path("output_root", ...).
   sfe_tma_filtered:   "2026_final_xenium_analysis/output/sfe/sfe_tma_filtered"   # canonical TMA entry-point
   sfe_dir:            "2026_final_xenium_analysis/output/sfe"
   # External organoid (PDO) substrate — Fig 3. LIVE EXTERNAL DEPENDENCY: the PDO

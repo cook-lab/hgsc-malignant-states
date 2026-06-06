@@ -7,9 +7,8 @@
 > the exact parameter, software version, threshold, or random seed has been
 > inserted from the canonical code. Discrepancies between the draft and the code
 > are flagged inline in **[NOTE]** call-outs and collated at the end. All stochastic
-> steps in the re-runnable (non-trust-boundary) portions of the pipeline are
-> seeded from a single global constant, `SEED = 42` (`config/config.py`), unless
-> a different fixed seed is stated explicitly.
+> steps in the pipeline are seeded from a single global constant, `SEED = 42`
+> (`config/config.py`), unless a different fixed seed is stated explicitly.
 
 ---
 
@@ -43,12 +42,13 @@ skipped) with an adaptive expected doublet rate scaled as
 pre-integration cut at 0.30 (here) and a stricter post-integration cut at 0.25
 (below); supplementary QC plots display the 0.25 line.]**
 
-### Integration (trust boundary — cluster-run)
+### Integration (CellAssign → scVI → scANVI)
 
-Integration was performed once on a GPU cluster and is treated as a frozen
-**trust boundary**: the scVI/scANVI latent space is not re-derived by the
-downstream re-runnable pipeline, which consumes the stored embedding and only
-recomputes the UMAP from it. For integration, 4,000 highly variable genes were
+Integration was performed once on a GPU cluster; the full integration code is
+included in the repository (`atlas/01_preprocess_qc/02_aggregate.py` … `07_process.py`).
+Re-running it is computationally expensive and not required to reproduce downstream
+results — the integrated atlas object is deposited as an entry object — but the step
+is included so it can be independently re-executed. For integration, 4,000 highly variable genes were
 selected per batch using the Seurat v3 variance-stabilizing transform
 (scanpy v1.11.4, `flavor="seurat_v3"`, `batch_key="sample_id"`). Initial cell-type
 priors were generated with CellAssign using a curated marker matrix of 81 genes
@@ -488,8 +488,9 @@ bootstrap and permutation procedures) were seeded from a single global constant
 is preserved as published (LIANA `seed = 1337`; TCGA bootstrap
 `set.seed(20260508)`). Scrublet, CopyKAT and k-means seeds were added during the
 reproducibility-hardening refactor where the original notebooks left them
-implicit. The scVI/scANVI integration is treated as a frozen trust boundary and
-is not re-derived downstream; the canonical cohort comprises the 8 published
+implicit. The scVI/scANVI integration code is included in the repository
+(`atlas/01_preprocess_qc/02_aggregate.py` … `07_process.py`) but, being an expensive GPU
+job, was not re-run as part of routine downstream reproduction; the canonical cohort comprises the 8 published
 whole HGSC tissues, the 97-patient TMA, and the 15 FTE cores (13 of which enter
 the spatial-clustering/polarization panels, per the FTE note above).
 
@@ -511,8 +512,9 @@ FNN, lme4, survival 3.8-6, survminer 0.5.2, copykat 1.1.0, BayesPrism 2.2.3,
 consensusOV 1.30.0, spacexr 2.2.1 (RCTD), SpatialFeatureExperiment 1.10.1,
 Voyager 1.10.0, scater/scran 1.36.0, ComplexHeatmap 2.24.1, data.table 1.18.4,
 arrow 24.0.0, tidyverse 2.0.0, ggplot2 4.0.3, singscore and GSVA (robustness).
-Integration (scVI/scANVI, trust boundary) was run with scvi-tools on an NVIDIA
-V100 GPU (CUDA 12.6.2). Organoid scRNA-seq was processed with Parse Biosciences
+Integration (scVI/scANVI) was run with scvi-tools on an NVIDIA
+V100 GPU (CUDA 12.6.2); the integration code is included in the repository
+(`atlas/01_preprocess_qc/02_aggregate.py` … `07_process.py`). Organoid scRNA-seq was processed with Parse Biosciences
 split-pipe 1.6.4 and Seurat v5; PDO doublets were removed with scDblFinder
 1.20.2.
 
@@ -552,8 +554,9 @@ publication.
    described above, but the figure bins should be reconciled with the reported n.
 7. **Could not fully determine from code (flag for author):**
    (a) exact `n_perms` value passed to LIANA at production runtime (it is a CLI
-   argument; the draft cites `n_perms = 100`); (b) the scVI/scANVI integration
-   hyperparameters are taken from the draft text, not re-derivable from the
-   downstream repo because integration is a trust boundary; (c) precise scFEA
+   argument; the draft cites `n_perms = 100`); (b) some scVI/scANVI integration
+   hyperparameters in `atlas/01_preprocess_qc/02_aggregate.py` … `07_process.py` are
+   taken from the draft text / scvi-tools defaults (marked CONFIRM in that script)
+   because the original cluster script was not in the working copy; (c) precise scFEA
    epochs/learning-rate (epochs = 100, lr = 0.008) are from the draft, run in a
    vendored sub-environment not in the main `environment.yml`.

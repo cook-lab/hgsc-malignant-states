@@ -10,7 +10,7 @@ PURPOSE
 INPUTS
     - <data_root>/2026_final_atlas/pre-processing and integration/
         20260213_integration/output/anndata/{integrated_harmony,
-        integrated_scvi,integrated_scanvi}.h5ad   (integration trust boundary)
+        integrated_scvi,integrated_scanvi}.h5ad   (deposited 20260213 integration output)
     - obj("atlas_scanvi")                          final atlas (UMAP + obs)
 
 OUTPUTS (under output_root/_prep_caches/)

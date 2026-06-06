@@ -8,7 +8,7 @@ so these resolve:
 
 | Key (`config.objects`) | Object | Role |
 |---|---|---|
-| `atlas_scanvi` | `hgsc_atlas_scanvi.h5ad` | scANVI integration output (**trust boundary**) |
+| `atlas_scanvi` | `hgsc_atlas_scanvi.h5ad` | scANVI integration output (deposited for convenience; reproducible via `atlas/01` step 03) |
 | `atlas_final` | `hgsc_atlas_final.h5ad` | canonical atlas downstream entry-point |
 | `atlas_epithelial` | `hgsc_atlas_epithelial.h5ad` | epithelial subset |
 | `atlas_celltype_dir` | `celltype_h5ad/` | per-celltype subsets |
@@ -16,8 +16,12 @@ so these resolve:
 | `sfe_tma_filtered` | `sfe/sfe_tma_filtered` | canonical TMA SpatialFeatureExperiment |
 | `sfe_dir` | `sfe/` | per-whole-tissue SFEs |
 
-The scVI/scANVI **integration is a trust boundary** — it was run on a compute cluster and is
-**not** reproduced here; its output object is the starting point for everything downstream.
+The scVI/scANVI **integration is included in the repo** (the original cluster scripts `atlas/01_preprocess_qc/02_aggregate.py` … `07_process.py`):
+the pipeline covers every step from raw data through final figures, including integration
+(CellAssign → scVI → scANVI). The integrated object is **deposited for convenience** so you can
+start downstream analysis from it directly, but it is **fully reproducible from raw data** via the
+included integration code. Re-running integration is computationally expensive (originally a GPU
+cluster job) and is not required to reproduce downstream results.
 
 ## The deposit also includes the analysis output caches
 

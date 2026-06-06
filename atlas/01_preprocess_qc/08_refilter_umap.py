@@ -1,20 +1,22 @@
 #!/usr/bin/env python3
 """
-Atlas 01 — Step 03b: re-filter doublets (threshold 0.25) + recompute UMAP
+Atlas 01 — Step 08: re-filter doublets (threshold 0.25) + recompute UMAP
 
 PURPOSE
     Apply the stricter post-integration Scrublet filter (score < 0.25, was 0.275),
     recompute neighbours/UMAP on the scANVI latent space, and write the canonical
-    downstream entry-point object. This is the first reproducible step AFTER the
-    scVI/scANVI integration trust boundary (see this stage's README).
+    downstream entry-point object. This consumes the deposited 20260213 integration
+    output (integrated_scanvi.h5ad). NOTE: how that object relates to the migrated
+    canonical-chain output (07_process / ovca_atlas_final.h5ad) is an OPEN
+    object-naming reconciliation flag — see this stage's README.
 
 INPUTS
-    integrated_scanvi.h5ad  (integration output; trust boundary — not reproduced here).
+    integrated_scanvi.h5ad  (deposited 20260213 integration output).
         Resolved under DATA_ROOT/2026_final_atlas/pre-processing and integration/...
 
 OUTPUTS
     obj("atlas_scanvi")  = hgsc_atlas_scanvi.h5ad   (post-filter + UMAP; config entry-point)
-    output_root/01_preprocess_qc/03b_refilter/*.svg  (QC UMAP checks)
+    output_root/01_preprocess_qc/08_refilter/*.svg  (QC UMAP checks)
 
 MANUSCRIPT PANEL(S)
     Upstream backend; underpins all atlas panels. No panel rendered directly.
@@ -52,7 +54,7 @@ INPUT_H5AD = path(
     "20260213_integration", "output", "anndata", "integrated_scanvi.h5ad",
 )
 OUTPUT_H5AD = obj("atlas_scanvi")
-FIG_DIR     = path("output_root", "01_preprocess_qc", "03b_refilter")
+FIG_DIR     = path("output_root", "01_preprocess_qc", "08_refilter")
 os.makedirs(FIG_DIR, exist_ok=True)
 
 SCORE_THRESHOLD = 0.25  # stricter than previous 0.275
@@ -98,7 +100,7 @@ CELLTYPE_PALETTE = {
 # ============================================================================
 
 print("=" * 60)
-print("Step 03b — Re-filter doublets (threshold 0.25) + UMAP")
+print("Step 08 — Re-filter doublets (threshold 0.25) + UMAP")
 print("=" * 60)
 
 print(f"\n1. Loading: {INPUT_H5AD}", flush=True)
@@ -196,7 +198,7 @@ ax.legend(handles=handles, loc="upper left", bbox_to_anchor=(1.01, 1.0),
 ax.set_title(f"celltype_pred — {adata.n_obs:,} cells (doublet < {SCORE_THRESHOLD})",
              fontsize=9, pad=6)
 ax.set_axis_off()
-fig.savefig(os.path.join(FIG_DIR, "03b_umap_celltype_pred.svg"),
+fig.savefig(os.path.join(FIG_DIR, "08_umap_celltype_pred.svg"),
             format="svg", dpi=450, bbox_inches="tight")
 plt.close(fig)
 
@@ -215,7 +217,7 @@ cbar.ax.tick_params(labelsize=6)
 cbar.set_label("Doublet Score", fontsize=6)
 ax.set_title(f"Doublet score (threshold < {SCORE_THRESHOLD})", fontsize=9, pad=6)
 ax.set_axis_off()
-fig.savefig(os.path.join(FIG_DIR, "03b_umap_doublet_score.svg"),
+fig.savefig(os.path.join(FIG_DIR, "08_umap_doublet_score.svg"),
             format="svg", dpi=450, bbox_inches="tight")
 plt.close(fig)
 
@@ -250,7 +252,7 @@ ax.legend(handles=handles, loc="upper left", bbox_to_anchor=(1.01, 1.0),
           handletextpad=0.3, borderpad=0.2)
 ax.set_title(f"Study — {len(study_cats)} studies", fontsize=9, pad=6)
 ax.set_axis_off()
-fig.savefig(os.path.join(FIG_DIR, "03b_umap_study.svg"),
+fig.savefig(os.path.join(FIG_DIR, "08_umap_study.svg"),
             format="svg", dpi=450, bbox_inches="tight")
 plt.close(fig)
 
@@ -259,7 +261,7 @@ gc.collect()
 
 print(f"""
 {'='*60}
-DONE — Step 03b Re-filter complete
+DONE — Step 08 Re-filter complete
 {'='*60}
   Doublet threshold: < {SCORE_THRESHOLD} (was 0.275)
   Total removed:     {total_removed:,} from original {n_before:,}

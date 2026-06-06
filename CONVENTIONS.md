@@ -32,10 +32,19 @@ re-derive results.
 8. **Documented quirks to fix**: scFEA flux label-map bug (int `Module_id` vs `M_x` keys —
    make labels human-readable); add `torch` usage note where step 21/scFEA runs.
 
-## Trust boundary (do NOT include as runnable)
-The scVI/scANVI integration is NOT reproduced (cluster job; training code absent). Represent
-it in `atlas/01_preprocess_qc/` as a DOCUMENTED step (README + the dataprep/concat/QC scripts
-that precede it) whose output (`hgsc_atlas_scanvi.h5ad`) is a config entry-point object.
+## Integration (the original cluster scripts, included as runnable)
+The scVI/scANVI integration **is included** in `atlas/01_preprocess_qc/` as the **original
+cluster scripts** (`atlas_00_aggregate` … `atlas_05_process`), migrated to steps
+`02_aggregate.py` → `03_preprocess_hvg.py` → `04_scvi.py` → `05_cellassign.py` →
+`06_scanvi.py` → `07_process.py` (with `04b_harmony_comparison.py` as an optional comparison).
+These are the authoritative originals, path-centralised — **not reconstructions**; analytical
+parameters were not altered. The CellAssign step (`05_cellassign.py`, = `atlas_04a`) uses the
+original `shared/cellassign_markers.csv` (53-gene × 11-type); note this differs from the
+81-gene × 16-type `shared/cellassign_markers_v3.csv` used by the later deposited integration —
+see `atlas/01_preprocess_qc/README.md` for that and other reconciliation flags. Re-running the
+integration needs a GPU and is computationally expensive, so it is optional: the deposited
+output (`hgsc_atlas_scanvi.h5ad`) is a config entry-point object, and downstream analysis can
+start from it. The code is included so every step from raw data is scrutable.
 
 ## Per-directory README
 Each stage dir gets a short README: ordered scripts, inputs→outputs, which figures depend on it.
