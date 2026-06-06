@@ -42,7 +42,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from config.config import path  # noqa: E402
 
 # ---------- Paths ----------
-COEX_CSV = path("output_root", "05_cnv", "tables", "within_clone_coexistence.csv")
+COEX_CSV = path("data_root", "2026_final_atlas", "output", "19_cnv", "tables", "within_clone_coexistence.csv")
 OUT_SVG = path("figures_dir", "atlas_cnv_alluvial.svg")
 OUT_PNG = path("figures_dir", "atlas_cnv_alluvial.png")
 

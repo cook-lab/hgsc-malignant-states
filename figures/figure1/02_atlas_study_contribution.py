@@ -44,11 +44,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from config.config import path  # noqa: E402
 
 # ---------- Paths ----------
-SCHEMA_PQ = path("output_root", "fig_secretory_polarization", "data", "meta.parquet")
-STUDY_META = path("output_root", "fig_data_fig1", "meta.parquet")
-CELLS_CSV = path("output_root", "fig_data_fig1", "panel_b_cells_per_study.csv")
-PATIENTS_CSV = path("output_root", "fig_data_fig1", "panel_b_patients_per_study.csv")
-COMP_CSV = path("output_root", "fig_data_fig1", "panel_g_composition_by_study.csv")
+SCHEMA_PQ = path("data_root", "2026_final_atlas", "output", "fig_secretory_polarization", "data", "meta.parquet")
+STUDY_META = path("data_root", "202605_epitype_manuscript", "final_publication_figures", "data_fig1", "meta.parquet")
+CELLS_CSV = path("data_root", "202605_epitype_manuscript", "final_publication_figures", "data_fig1", "panel_b_cells_per_study.csv")
+PATIENTS_CSV = path("data_root", "202605_epitype_manuscript", "final_publication_figures", "data_fig1", "panel_b_patients_per_study.csv")
+COMP_CSV = path("data_root", "202605_epitype_manuscript", "final_publication_figures", "data_fig1", "panel_g_composition_by_study.csv")
 
 OUT_SVG = path("figures_dir", "atlas_study_contribution_with_epi_composition.svg")
 OUT_PNG = path("figures_dir", "atlas_study_contribution_with_epi_composition.png")

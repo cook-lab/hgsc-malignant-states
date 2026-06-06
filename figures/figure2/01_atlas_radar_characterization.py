@@ -39,7 +39,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from config.config import path  # noqa: E402
 
 # ---------- Paths ----------
-DATA_DIR = path("output_root", "04_functional")
+DATA_DIR = path("data_root", "2026_final_atlas", "output", "21_epitype_functional_characterization")
 OUT_STEM = "atlas_radar_characterization"
 
 # ---------- Style ----------

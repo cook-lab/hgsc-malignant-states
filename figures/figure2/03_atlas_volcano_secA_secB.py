@@ -40,7 +40,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from config.config import path  # noqa: E402
 
 # ---------- Paths ----------
-DEG_CSV = path("output_root", "fig_secretory_polarization", "data", "panel_i_deg_results.csv")
+DEG_CSV = path("data_root", "2026_final_atlas", "output", "fig_secretory_polarization", "data", "panel_i_deg_results.csv")
 SIG_YML = Path(__file__).resolve().parents[2] / "shared" / "signatures.yml"
 OUT_SVG = path("figures_dir", "atlas_volcano_secA_secB.svg")
 OUT_PNG = path("figures_dir", "atlas_volcano_secA_secB.png")

@@ -39,7 +39,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from config.config import path  # noqa: E402
 
 # ---------- Paths ----------
-TBL_DIR = path("output_root", "07_deconvolution_survival", "20_consensusov", "tables")
+TBL_DIR = path("data_root", "2026_final_atlas", "output", "20_consensusov", "tables")
 SUMMARY_CSV = os.path.join(TBL_DIR, "20c_subtype_composition_summary.csv")
 SAMPLE_CSV = os.path.join(TBL_DIR, "20c_per_sample_joined.csv")
 OUT_SVG = path("figures_dir", "atlas_tcga_subtype_epitype.svg")

@@ -35,7 +35,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from config.config import path  # noqa: E402
 
 # ---------- Paths ----------
-DATA_DIR = path("output_root", "04_functional", "nmf_characterization")
+DATA_DIR = path("data_root", "202605_epitype_manuscript", "20260429_figures", "data", "nmf_characterization")
 OUT_SVG = path("figures_dir", "atlas_g2m_barplot_secAB.svg")
 OUT_PNG = path("figures_dir", "atlas_g2m_barplot_secAB.png")
 

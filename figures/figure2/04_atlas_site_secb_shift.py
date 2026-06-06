@@ -40,7 +40,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from config.config import path, SEED  # noqa: E402
 
 # ---------- Paths ----------
-DATA_DIR = path("output_root", "fig_secretory_polarization", "data")
+DATA_DIR = path("data_root", "2026_final_atlas", "output", "fig_secretory_polarization", "data")
 BARS_CSV = os.path.join(DATA_DIR, "panel_b_site_proportions.csv")
 PAIRED_CSV = os.path.join(DATA_DIR, "panel_c_paired_site.csv")
 OUT_SVG = path("figures_dir", "atlas_site_secb_shift.svg")

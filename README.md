@@ -28,15 +28,79 @@ docs/        Reproducibility notes, expanded methods, data availability
 The backend pipelines produce the intermediate objects/caches; each `figures/figureN/` script
 loads a cache and renders a publication panel. Panel → script mapping is in `figures/README.md`.
 
-## Reproducing
+## Reproducing the paper
 
-1. **Environments**
-   - Python: `conda env create -f environment.yml && conda activate epitype-py`
-   - R (4.5.x): `Rscript -e 'renv::restore(lockfile="renv.lock")'` (pinned lockfile, 410 packages). Alternative install-from-scratch: `Rscript renv_bootstrap.R`. Key versions: `docs/r_key_package_versions.csv`.
-2. **Data**: obtain the deposited objects (see `data/README.md`) and set `DATA_ROOT`
-   (or edit `config/config.yml`).
-3. **Run**: backend stages in numeric order within `atlas/` and `spatial/`, then the
-   `figures/` scripts. Each script's header lists its inputs, outputs, and the panel(s) it supports.
+### Data flow
+
+```
+  DEPOSITED DATA (set DATA_ROOT)                         OUTPUT_ROOT (./output, gitignored)
+  ├─ entry objects: atlas h5ad, SFE dirs        ──┐
+  └─ analysis output caches (per-stage tables,    │   figure scripts ──► output/figures/<figureN>/*.svg|png|pdf
+     GAM .rds, NMF/CNV/LIANA/survival outputs) ──┼──►  table scripts  ──► output/tables/*
+                                                  │   backend scripts ──► output/<stage>/*  (regeneration / verification)
+```
+
+The repo is **deposit-driven**: every figure and table script reads its inputs (entry
+objects *and* intermediate caches) from the **deposited data bundle** under `DATA_ROOT`, and
+writes only rendered outputs to `OUTPUT_ROOT`. You do **not** need to re-run the heavy backend
+to reproduce a figure. The `atlas/` and `spatial/` backend stages are provided to **regenerate
+and verify** those caches from the entry objects.
+
+### 1. Set up environments
+```bash
+conda env create -f environment.yml && conda activate epitype-py     # Python
+Rscript -e 'renv::restore(lockfile="renv.lock")'                     # R 4.5.x (410 pinned pkgs)
+# (alt R install-from-scratch: Rscript renv_bootstrap.R; versions in docs/r_key_package_versions.csv)
+```
+
+### 2. Get the data and point the config at it
+Download the deposited bundle (see `data/README.md`) and set the path (no code edits needed):
+```bash
+export DATA_ROOT=/path/to/deposited/bundle      # contains entry objects + analysis output caches
+export OUTPUT_ROOT=./output                      # where renders/regenerated caches go (default)
+```
+
+### 3a. Reproduce the FIGURES (primary path — no backend re-run)
+```bash
+# a few supplementary panels (SF1/SF2) first regenerate small obs caches:
+PYTHONPATH=. python figures/_prep/00_extract_atlas_obs.py
+PYTHONPATH=. python figures/_prep/00b_extract_integration_umaps.py
+# then any panel — each script reproduces its manuscript panel(s):
+PYTHONPATH=. python figures/figure2/03_atlas_volcano_secA_secB.py   # Fig 2C  (Python)
+Rscript           figures/figure7/01_xenium_forest_cox.R            # Fig 7A/B (R)
+```
+**To reproduce one specific panel**, look it up in `figures/README.md` (the full Fig 1A…7G /
+SF1…SF14 → script map) and run that one script. Each script's header docstring lists its exact
+inputs, outputs, and the panel(s) it supports.
+
+### 3b. Reproduce the SUPPLEMENTAL DATA TABLES
+```bash
+# generators in tables/ (Supp Data 4–7 committed; 1–3 export from the entry objects)
+PYTHONPATH=. python tables/<NN>_*.py   ;   Rscript tables/<NN>_*.R
+```
+
+### 4. (Optional) Regenerate the analysis from the entry objects
+To re-derive the intermediate caches from scratch (e.g. to verify reproducibility), run the
+backend stages **in numeric order**, which write to `OUTPUT_ROOT`:
+```bash
+# Atlas (Python) — start from the integrated object (integration itself is the trust boundary):
+for s in atlas/01_preprocess_qc atlas/02_annotation atlas/03_epithelial_nmf atlas/04_functional \
+         atlas/05_cnv atlas/06_cellcomm atlas/07_deconvolution_survival atlas/08_xenium_reference; do
+  # run the numbered scripts within each stage in order (see each stage README)
+  done
+# Spatial (R) — 00_setup is sourced by all; then build → QC → annotation → downstream:
+#   spatial/00_setup → 01_build_sfe → 02_qc → 03_annotation_polarization → 04_neighborhood
+#   → 05_gradients_gams → 06_spatial_stats → 07_morphometry → 08_clinical_survival → 09_external_validation
+```
+Then diff `OUTPUT_ROOT/<stage>` against the deposited caches. Each stage dir has a `README.md`
+with its ordered scripts and input→output map. **Runtime tiers** are in each script header
+(fast / moderate / heavy); the heavy steps (CopyKAT, LIANA, BayesPrism, scFEA, per-sample GAMs,
+Lee's L) are flagged. Stochastic steps are seeded from `config.seed` for determinism.
+
+### Trust boundary
+The scVI→scANVI **integration is not re-executed** (cluster job; training code not included).
+The integrated object (`hgsc_atlas_scanvi.h5ad`) is an entry object; everything downstream is
+reproducible from the deposited bundle.
 
 ## Trust boundary
 

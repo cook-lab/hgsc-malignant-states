@@ -42,8 +42,8 @@ from config.config import obj, path, SEED  # noqa: E402
 # ---------- Paths ----------
 OPTO_CSV = os.path.join(obj("organoids_root"),
                         "output/08_OPTO98_SecB_Conditions/opto98_ucell_scores_aligned.csv")
-ATLAS_SCORES = path("output_root", "18_ucell_atlas", "atlas_ucell_scores.csv")
-ATLAS_META = path("output_root", "18_ucell_atlas", "atlas_secretory_metadata.csv")
+ATLAS_SCORES = path("data_root", "2026_final_atlas", "output", "18_ucell_atlas", "atlas_ucell_scores.csv")
+ATLAS_META = path("data_root", "2026_final_atlas", "output", "18_ucell_atlas", "atlas_secretory_metadata.csv")
 OUT_PNG = path("figures_dir", "organoids_secB_timecourse.png")
 OUT_SVG = path("figures_dir", "organoids_secB_timecourse.svg")
 

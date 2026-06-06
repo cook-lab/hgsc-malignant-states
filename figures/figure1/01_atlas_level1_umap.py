@@ -36,7 +36,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from config.config import path, SEED  # noqa: E402
 
 # ---------- Paths ----------
-META_PQ = path("output_root", "fig_data_fig1", "meta.parquet")
+META_PQ = path("data_root", "202605_epitype_manuscript", "final_publication_figures", "data_fig1", "meta.parquet")
 OUT_SVG = path("figures_dir", "atlas_level1_umap.svg")
 OUT_PNG = path("figures_dir", "atlas_level1_umap.png")
 

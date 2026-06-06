@@ -39,7 +39,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from config.config import path, SEED  # noqa: E402
 
 # ---------- Paths ----------
-META_PQ = path("output_root", "fig_secretory_polarization", "data", "meta.parquet")
+META_PQ = path("data_root", "2026_final_atlas", "output", "fig_secretory_polarization", "data", "meta.parquet")
 OUT_SVG = path("figures_dir", "atlas_epithelial_secretory_ciliated_umap.svg")
 OUT_PNG = path("figures_dir", "atlas_epithelial_secretory_ciliated_umap.png")
 

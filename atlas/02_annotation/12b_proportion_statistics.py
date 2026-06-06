@@ -8,10 +8,10 @@ PURPOSE
     a text report. Consumes the proportion-count tables written by 12b.
 
 INPUTS
-    output_root/02_annotation/12_celltype_proportions/tables/*.csv
+    output_root/02_annotation/12b_celltype_proportions/tables/*.csv
 
 OUTPUTS
-    output_root/02_annotation/12_celltype_proportions/12b_*.csv + 12b_statistical_report.txt
+    output_root/02_annotation/12b_celltype_proportions/12b_*.csv + 12b_statistical_report.txt
 
 MANUSCRIPT PANEL(S)
     Statistics backing Fig 1B-E / Fig 2 composition claims.
@@ -41,8 +41,8 @@ from config.config import obj, path, SEED  # noqa: E402
 
 np.random.seed(SEED)
 
-TABLE_DIR   = path("output_root", "02_annotation", "12_celltype_proportions", "tables")
-OUT_DIR     = path("output_root", "02_annotation", "12_celltype_proportions")
+TABLE_DIR   = path("output_root", "02_annotation", "12b_celltype_proportions", "tables")
+OUT_DIR     = path("output_root", "02_annotation", "12b_celltype_proportions")
 
 REPORT_PATH = os.path.join(OUT_DIR, "12b_statistical_report.txt")
 

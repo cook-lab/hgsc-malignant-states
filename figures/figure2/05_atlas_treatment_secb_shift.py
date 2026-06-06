@@ -42,8 +42,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from config.config import path, SEED  # noqa: E402
 
 # ---------- Paths ----------
-BARS_CSV = path("output_root", "fig_data_fig1", "data_fig1i_treatment_proportions.csv")
-META_PATH = path("output_root", "fig_secretory_polarization", "data", "meta.parquet")
+BARS_CSV = path("data_root", "202605_epitype_manuscript", "20260411_figures", "data_fig1i_treatment_proportions.csv")
+META_PATH = path("data_root", "2026_final_atlas", "output", "fig_secretory_polarization", "data", "meta.parquet")
 OUT_SVG = path("figures_dir", "atlas_treatment_secb_shift.svg")
 OUT_PNG = path("figures_dir", "atlas_treatment_secb_shift.png")
 

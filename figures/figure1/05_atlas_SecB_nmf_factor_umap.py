@@ -35,8 +35,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from config.config import CFG, path, SEED  # noqa: E402
 
 # ---------- Paths ----------
-META_PQ = path("output_root", "fig_secretory_polarization", "data", "meta.parquet")
-USAGE_CSV = path("output_root", "03_epithelial_nmf", "11d_nmf_usage.csv")
+META_PQ = path("data_root", "2026_final_atlas", "output", "fig_secretory_polarization", "data", "meta.parquet")
+USAGE_CSV = path("data_root", "2026_final_atlas", "output", "11d_epithelial_nmf", "11d_nmf_usage.csv")
 OUT_SVG = path("figures_dir", "atlas_SecB_nmf_factor_umap.svg")
 OUT_PNG = path("figures_dir", "atlas_SecB_nmf_factor_umap.png")
 
