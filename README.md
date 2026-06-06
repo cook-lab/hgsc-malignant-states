@@ -32,7 +32,7 @@ loads a cache and renders a publication panel. Panel → script mapping is in `f
 
 1. **Environments**
    - Python: `conda env create -f environment.yml && conda activate epitype-py`
-   - R (4.5.x): `Rscript renv_bootstrap.R` (then `renv::snapshot()`); versions in `docs/r_key_package_versions.csv`.
+   - R (4.5.x): `Rscript -e 'renv::restore(lockfile="renv.lock")'` (pinned lockfile, 410 packages). Alternative install-from-scratch: `Rscript renv_bootstrap.R`. Key versions: `docs/r_key_package_versions.csv`.
 2. **Data**: obtain the deposited objects (see `data/README.md`) and set `DATA_ROOT`
    (or edit `config/config.yml`).
 3. **Run**: backend stages in numeric order within `atlas/` and `spatial/`, then the
