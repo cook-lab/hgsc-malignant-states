@@ -12,7 +12,7 @@
 #   - load_sfe / theme_lab from spatial/00_setup/00_setup.R
 #
 # OUTPUTS:
-#   - figures_dir/gam_microenvironment_polarization.{pdf,png,svg}
+#   - figures_dir/figure4/gam_microenvironment_polarization.{pdf,png,svg}
 #
 # MANUSCRIPT PANEL(S): Fig 4G.
 #
@@ -34,7 +34,7 @@ suppressPackageStartupMessages({
 set.seed(CFG$seed)
 
 # --- Paths -------------------------------------------------------------------
-fig_dir <- path.expand(CFG$paths$figures_dir)
+fig_dir <- cfg_path("figures_dir", "figure4")
 if (!dir.exists(fig_dir)) dir.create(fig_dir, recursive = TRUE)
 OUT_STEM <- file.path(fig_dir, "gam_microenvironment_polarization")
 
@@ -46,7 +46,7 @@ vascular_types   <- c("Pericyte", "Endothelial")
 
 # --- Load neighborhood features ----------------------------------------------
 message("Loading neighborhood_features.rds ...")
-nf <- readRDS(cfg_path("output_root", "16b_niche_succession_gams_v2",
+nf <- readRDS(cfg_path("data_root", "2026_final_xenium_analysis", "output", "16b_niche_succession_gams_v2",
                        "neighborhood_features.rds"))
 setDT(nf)
 nf <- nf[sample_id != "TMA" & !is.na(polarization_UCell)]

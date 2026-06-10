@@ -32,7 +32,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from config.config import path  # noqa: E402
+from config.config import path, SEED  # noqa: E402
 
 # =========================
 # CONFIG
@@ -53,6 +53,9 @@ import scvi
 from scvi.external.mrvi_torch import TorchMRVI as MRVI  # Explicitly use PyTorch backend
 import torch
 import json
+
+scvi.settings.seed = SEED  # seed numpy/torch/scvi — best-effort determinism (GPU training
+# is not guaranteed bit-reproducible; deposited integrated object is the trust boundary)
 import os
 from datetime import datetime
 import matplotlib

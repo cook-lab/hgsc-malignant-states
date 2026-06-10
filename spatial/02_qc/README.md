@@ -17,8 +17,16 @@ cross-platform probe QC, and produces the canonical filtered TMA entry-point.
    - IN: SFEs + xenium reference
    - OUT: `05_probe_qc/{probe_qc_full,flag_qc,gene_exclusion_decisions,celltype_coverage}.csv`,
      `genes_exclude_singler.txt`, `genes_monitor_singler.txt`
-4. `06_filter_tma.R` — apply core-level QC exclusions; write the canonical TMA.
-   - IN: `<sfe_dir>/sfe_tma`, `07_core_qc/core_qc_summary.csv`,
+4. `05b_core_qc.R` — annotation-level core QC: per-core composition, SingleR
+   confidence, Mahalanobis composition outlier, within-patient discordance →
+   per-core flags + `recommendation` (exclude/review/pass). Deterministic.
+   - IN: `<sfe_dir>/sfe_tma`
+   - OUT: `07_core_qc/{core_qc_summary,patient_core_status,patient_concordance}.csv`
+   - Migrated from the source `core_qc.Rmd` (previously had no in-repo producer);
+     **must run before `06_filter_tma.R`**. The deposited copy is authoritative
+     for the published cohort; this script reproduces it.
+5. `06_filter_tma.R` — apply core-level QC exclusions; write the canonical TMA.
+   - IN: `<sfe_dir>/sfe_tma`, `07_core_qc/{core_qc_summary,patient_core_status}.csv`,
      `clinical_data_clean.csv`
    - OUT: `<sfe_dir>/sfe_tma_filtered`, `07_core_qc/excluded_cores_documentation.csv`
 

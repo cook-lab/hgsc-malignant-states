@@ -11,7 +11,7 @@ INPUTS
     - 11d NMF usage : output_root/03_epithelial_nmf/11d_nmf_usage.csv (Factor_2)
 
 OUTPUTS
-    - figures_dir/atlas_SecB_nmf_factor_umap.{svg,png}
+    - figures_dir/figure1/atlas_SecB_nmf_factor_umap.{svg,png}
 
 MANUSCRIPT PANEL(S): Fig 1H.
 
@@ -37,8 +37,8 @@ from config.config import CFG, path, SEED  # noqa: E402
 # ---------- Paths ----------
 META_PQ = path("data_root", "2026_final_atlas", "output", "fig_secretory_polarization", "data", "meta.parquet")
 USAGE_CSV = path("data_root", "2026_final_atlas", "output", "11d_epithelial_nmf", "11d_nmf_usage.csv")
-OUT_SVG = path("figures_dir", "atlas_SecB_nmf_factor_umap.svg")
-OUT_PNG = path("figures_dir", "atlas_SecB_nmf_factor_umap.png")
+OUT_SVG = path("figures_dir", "figure1", "atlas_SecB_nmf_factor_umap.svg")
+OUT_PNG = path("figures_dir", "figure1", "atlas_SecB_nmf_factor_umap.png")
 
 assert os.path.exists(META_PQ), f"Missing: {META_PQ}"
 assert os.path.exists(USAGE_CSV), f"Missing: {USAGE_CSV}"

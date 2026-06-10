@@ -45,7 +45,7 @@ from config.config import obj, path  # noqa: E402
 # PATHS (central config)
 # ============================================================================
 
-META_PQ = path("output_root", "fig_secretory_polarization", "data", "meta.parquet")
+META_PQ = path("data_root", "2026_final_atlas", "output", "fig_secretory_polarization", "data", "meta.parquet")
 EPI_H5AD = obj("atlas_epithelial")
 OUT_SVG = path("output_root", "figures", "supplementary", "SF9_atlas_epitype_by_metadata.svg")
 OUT_PNG = path("output_root", "figures", "supplementary", "SF9_atlas_epitype_by_metadata.png")
@@ -136,11 +136,8 @@ PANELS = [
             "lymph_node": "Lymph\nnode",
         },
     },
-    {
-        "col": "metastatic_site", "title": "Metastatic site",
-        "order": ["primary", "metastasis", "ascites"],
-        "labels": {"primary": "Primary", "metastasis": "Metastasis", "ascites": "Ascites"},
-    },
+    # NOTE: published SF9 is 5 panels (A-E: treatment, anatomic, TP53, HRD, BRCA).
+    # The "Metastatic site" panel is intentionally omitted to match the figure (audit H9).
     {
         "col": "TP53_status", "title": "TP53 status",
         "order": ["mutated", "wildtype"],
@@ -192,7 +189,7 @@ gs = GridSpec(2, 4, figure=fig, hspace=0.60, wspace=0.12,
               top=0.94, bottom=0.09, left=0.07, right=0.97, height_ratios=[1, 1])
 
 panel_specs = [
-    gs[0, 0:2], gs[0, 2:4], gs[1, 0], gs[1, 1], gs[1, 2], gs[1, 3],
+    gs[0, 0:2], gs[0, 2:4], gs[1, 0], gs[1, 1], gs[1, 2],  # 5 panels (SF9A-E)
 ]
 
 for idx, panel in enumerate(PANELS):

@@ -46,12 +46,7 @@ for (d in c(out_path, fig_path)) {
 
 # --- SFE names ----------------------------------------------------------------
 
-sfe_names <- c(
-  "sfe_tma_filtered",
-  "sfe_OTB_2384", "sfe_OTB_2417", "sfe_OTB_2432",
-  "sfe_OTB_2454", "sfe_OTB_2457", "sfe_OTB_2461",
-  "sfe_SP24_24824", "sfe_SP24_25573"
-)
+sfe_names <- c("sfe_tma_filtered", sfe_names_wt)
 
 # --- Cell type order (18 types) -----------------------------------------------
 
@@ -122,6 +117,13 @@ for (sname in sfe_names) {
   sfe <- load_sfe(sname)
   cd <- as.data.frame(colData(sfe))
   xy <- spatialCoords(sfe)
+
+  # Idempotent legacy-label rename: deposited SFEs still carry the legacy
+  # epithelial value "Transitioning epithelium"; downstream code matches on
+  # the canonical "Intermediate epithelium". Rename at the read point so the
+  # secretory_types match (and all downstream filters/colors) capture the
+  # Intermediate epitype. Harmless if the value is already canonical.
+  cd$cell_label[cd$cell_label == "Transitioning epithelium"] <- "Intermediate epithelium"
 
   # Sample ID and core_id
 
@@ -914,8 +916,15 @@ if (length(inflection_list) > 0) {
   sig_features_infl <- gam_summary[p_adj < 0.05]$feature
   inflections <- inflections[feature %in% sig_features_infl]
 
-  # For features with multiple inflection points, keep the one with largest
-  # second-derivative magnitude change (most prominent)
+  # For features with multiple inflection points, keep ONE "primary" point per
+  # feature. NOTE: the code below selects the inflection whose x-position
+  # (polarization score) is FARTHEST from that feature's median inflection x —
+  # i.e. the most extreme/peripheral crossing, NOT the one with the largest
+  # second-derivative magnitude. frank(-abs(...)) ranks ascending, so the most
+  # negative value (largest |inflection_x - median|) gets rank == 1.
+  # This selection feeds the published Fig 5d inflection summary; the rule is
+  # preserved as-is (see flagged_for_user). Do not "fix" it to a |d2y|-based
+  # criterion without re-validating the figure.
   inflections[, rank := frank(-abs(inflection_x - median(inflection_x))),
               by = feature]
   inflections_primary <- inflections[rank == 1]

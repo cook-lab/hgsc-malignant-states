@@ -11,6 +11,8 @@
 
 if (!requireNamespace("yaml", quietly = TRUE)) install.packages("yaml")
 
+`%||%` <- function(a, b) if (is.null(a)) b else a
+
 .cfg_expand <- function(x) {
   if (is.character(x)) {
     m <- regmatches(x, gregexpr("\\$\\{([A-Za-z_][A-Za-z0-9_]*)(:-[^}]*)?\\}", x))[[1]]
@@ -26,9 +28,19 @@ if (!requireNamespace("yaml", quietly = TRUE)) install.packages("yaml")
   } else x
 }
 
-.config_file <- file.path(dirname(sys.frame(1)$ofile %||% "config/config.R"), "config.yml")
-if (!file.exists(.config_file)) .config_file <- "config/config.yml"
-`%||%` <- function(a, b) if (is.null(a)) b else a
+# Locate config.yml next to THIS config.R, robust to nested source() (e.g. when a
+# stage helper such as 00_setup.R re-sources config.R): scan the call stack for the
+# frame whose $ofile is config.R itself, rather than trusting sys.frame(1)$ofile
+# (which points at the *sourcing* script under nested/Rscript invocation).
+.config_file <- NULL
+for (.i in seq_len(sys.nframe())) {
+  .of <- sys.frame(.i)$ofile
+  if (!is.null(.of) && grepl("config\\.R$", .of)) {
+    .cand <- file.path(dirname(.of), "config.yml")
+    if (file.exists(.cand)) { .config_file <- .cand; break }
+  }
+}
+if (is.null(.config_file) || !file.exists(.config_file)) .config_file <- "config/config.yml"
 
 CFG <- .cfg_expand(yaml::read_yaml(.config_file))
 CFG$seed <- as.integer(CFG$seed %||% 42L)

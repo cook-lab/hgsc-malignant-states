@@ -15,7 +15,7 @@ INPUTS
     - SecA/SecB 7-gene signatures from shared/signatures.yml.
 
 OUTPUTS
-    - figures_dir/atlas_volcano_secA_secB.{svg,png}
+    - figures_dir/figure2/atlas_volcano_secA_secB.{svg,png}
 
 MANUSCRIPT PANEL(S): Fig 2C.
 
@@ -42,8 +42,8 @@ from config.config import path  # noqa: E402
 # ---------- Paths ----------
 DEG_CSV = path("data_root", "2026_final_atlas", "output", "fig_secretory_polarization", "data", "panel_i_deg_results.csv")
 SIG_YML = Path(__file__).resolve().parents[2] / "shared" / "signatures.yml"
-OUT_SVG = path("figures_dir", "atlas_volcano_secA_secB.svg")
-OUT_PNG = path("figures_dir", "atlas_volcano_secA_secB.png")
+OUT_SVG = path("figures_dir", "figure2","atlas_volcano_secA_secB.svg")
+OUT_PNG = path("figures_dir", "figure2","atlas_volcano_secA_secB.png")
 
 # ---------- Signatures (shared source of truth) ----------
 SIG = yaml.safe_load(open(SIG_YML))

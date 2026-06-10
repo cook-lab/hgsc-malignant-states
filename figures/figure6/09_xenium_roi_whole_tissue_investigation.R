@@ -21,7 +21,8 @@
 #
 # OUTPUTS
 #   figures_dir/figure6/roi_whole_tissue_investigation/
-#     {sample}_{label}_{gene}.{png,svg}
+#     {sample}_{label}_{gene}.{png,svg}      (gene-expression maps; Fig 6L)
+#     {sample}_{label}_celltype.{png,svg}    (cell-type map;        Fig 6K)
 #
 # MANUSCRIPT PANEL(S): Fig 6K (SP24_24824 ROI cell-type, 2 boxes),
 #                      Fig 6L (SP24_24824 ROI CTSL/MMP7/ICAM1, 2 boxes)
@@ -36,6 +37,10 @@
 #     -> whole-tissue render of a gene subset (arg 4 comma-separated)
 #   Rscript ... SP24_24824 <xmin,xmax,ymin,ymax> upper_right CTSL,MMP7,ICAM1
 #     -> the Fig 6L production call (per-ROI gene subset)
+#   Rscript ... SP24_24824 <xmin,xmax,ymin,ymax> upper_right celltype
+#     -> the Fig 6K production call: cell-type map coloured by `cell_label`
+#        with ref_palette (instead of gene expression). The reserved gene arg
+#        "celltype" switches the renderer; the gene-expression path is unchanged.
 # ============================================================================
 
 .here     <- dirname(sub("^--file=", "", grep("^--file=", commandArgs(FALSE), value = TRUE)[1]))
@@ -92,13 +97,16 @@ ROI_ARG    <- if (length(args) >= 2 && nzchar(args[2])) args[2] else "whole"
 LABEL_ARG  <- if (length(args) >= 3 && nzchar(args[3])) args[3] else "whole"
 GENE_ARG   <- if (length(args) >= 4 && nzchar(args[4])) args[4] else NA_character_
 
+# Reserved gene arg "celltype" switches to the Fig 6K cell-type renderer.
+CELLTYPE_MODE <- !is.na(GENE_ARG) && tolower(GENE_ARG) == "celltype"
+
 sfe_name <- if (startsWith(SAMPLE_ARG, "sfe_")) SAMPLE_ARG else paste0("sfe_", SAMPLE_ARG)
 base_sample <- sub("^sfe_", "", sfe_name)
 if (!base_sample %in% WT_SAMPLES) {
   warning("Sample not in canonical WT list; proceeding: ", base_sample)
 }
 
-if (!is.na(GENE_ARG)) {
+if (!is.na(GENE_ARG) && !CELLTYPE_MODE) {
   sel <- strsplit(GENE_ARG, ",")[[1]]
   not_in_union <- setdiff(sel, GENES)
   if (length(not_in_union)) {
@@ -108,10 +116,15 @@ if (!is.na(GENE_ARG)) {
   GENES <- sel
 }
 
-cat(sprintf("Sample : %s\nROI    : %s\nLabel  : %s\nGenes  : %d (%s%s)\n",
-            sfe_name, ROI_ARG, LABEL_ARG, length(GENES),
-            paste(head(GENES, 5), collapse = ", "),
-            ifelse(length(GENES) > 5, ", ...", "")))
+if (CELLTYPE_MODE) {
+  cat(sprintf("Sample : %s\nROI    : %s\nLabel  : %s\nMode   : CELLTYPE (Fig 6K)\n",
+              sfe_name, ROI_ARG, LABEL_ARG))
+} else {
+  cat(sprintf("Sample : %s\nROI    : %s\nLabel  : %s\nGenes  : %d (%s%s)\n",
+              sfe_name, ROI_ARG, LABEL_ARG, length(GENES),
+              paste(head(GENES, 5), collapse = ", "),
+              ifelse(length(GENES) > 5, ", ...", "")))
+}
 
 # --- Load SFE ---------------------------------------------------------------
 cat(sprintf("Loading %s ...\n", sfe_name))
@@ -133,10 +146,12 @@ if (ROI_ARG != "whole") {
               LABEL_ARG, paste(bb, collapse=","), ncol(sfe)))
 }
 
-missing_genes <- setdiff(GENES, rownames(sfe))
-if (length(missing_genes) > 0) {
-  cat("!! genes not in panel (skipped):", paste(missing_genes, collapse=", "), "\n")
-  GENES <- setdiff(GENES, missing_genes)
+if (!CELLTYPE_MODE) {
+  missing_genes <- setdiff(GENES, rownames(sfe))
+  if (length(missing_genes) > 0) {
+    cat("!! genes not in panel (skipped):", paste(missing_genes, collapse=", "), "\n")
+    GENES <- setdiff(GENES, missing_genes)
+  }
 }
 
 aspect <- (max(co[,1]) - min(co[,1])) / (max(co[,2]) - min(co[,2]))
@@ -179,6 +194,43 @@ render_gene <- function(sfe_x, gene) {
          limitsize = FALSE)
   ggsave(file.path(OUT_DIR, paste0(stem, ".svg")), p,
          width = w_in, height = h_in, bg = "white", limitsize = FALSE)
+}
+
+# --- Cell-type render (Fig 6K) ----------------------------------------------
+# Colour the cropped cells by `cell_label` with ref_palette, matching the
+# Fig 4D / SF10C cellSeg-polygon styling. The deposited SFE carries the legacy
+# literal "Transitioning epithelium"; rename to the standardized "Intermediate
+# epithelium" so values match ref_palette (otherwise those cells would render
+# with no fill). The gene-expression path above is untouched.
+if (CELLTYPE_MODE) {
+  lab <- as.character(sfe$cell_label)
+  n_trans <- sum(lab == "Transitioning epithelium", na.rm = TRUE)
+  lab[lab == "Transitioning epithelium"] <- "Intermediate epithelium"
+  sfe$cell_label <- lab
+  cat(sprintf("  renamed Transitioning -> Intermediate: %d cells\n", n_trans))
+  cat("  cell_label tally:\n")
+  print(sort(table(lab), decreasing = TRUE))
+
+  p <- plotSpatialFeature(sfe, "cell_label", colGeometryName = "cellSeg",
+                          aes_use = "fill", linewidth = 0.15, color = "grey50") +
+    scale_fill_manual(values = ref_palette, name = "Cell type", drop = TRUE) +
+    theme_void(base_size = 10) +
+    theme(legend.position  = "right",
+          legend.text      = element_text(size = 8, color = "black"),
+          legend.title     = element_text(size = 9, color = "black"),
+          legend.key.size  = unit(0.5, "lines"),
+          plot.background  = element_rect(fill = "white", color = NA),
+          panel.background = element_rect(fill = "white", color = NA)) +
+    guides(fill = guide_legend(override.aes = list(linewidth = 0)))
+
+  stem <- sprintf("%s_%s_celltype", base_sample, LABEL_ARG)
+  ggsave(file.path(OUT_DIR, paste0(stem, ".png")), p,
+         width = w_in, height = h_in, dpi = 450, bg = "white", limitsize = FALSE)
+  ggsave(file.path(OUT_DIR, paste0(stem, ".svg")), p,
+         width = w_in, height = h_in, bg = "white", limitsize = FALSE)
+  cat(sprintf("\n=== Saved cell-type map: %s.{png,svg} ===\n", stem))
+  cat("\nDone. Output in:", OUT_DIR, "\n")
+  quit(save = "no", status = 0)
 }
 
 cat(sprintf("\n=== Rendering %d genes to %s ===\n", length(GENES), OUT_DIR))

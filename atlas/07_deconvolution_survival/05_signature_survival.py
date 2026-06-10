@@ -58,8 +58,12 @@ from lifelines.statistics import logrank_test, multivariate_logrank_test
 # ── Paths ─────────────────────────────────────────────────────
 OUT_DIR   = path("output_root", "07_deconvolution_survival")
 FRACTIONS = os.path.join(OUT_DIR, "CIBERSORTx_Results.txt")
-GENE_CLS  = path("data_root", "2026_final_atlas", "output", "11e_nmf_characterization",
-                 "11e_gene_classification.csv")
+# Prefer the regenerated classification (atlas/03/01b_gene_classification.py); fall
+# back to the deposited copy if a clean re-run has not produced it (audit A4/H4).
+_GC_RECOMPUTED = path("output_root", "03_epithelial_nmf", "11e_gene_classification.csv")
+_GC_DEPOSITED  = path("data_root", "2026_final_atlas", "output", "11e_nmf_characterization",
+                      "11e_gene_classification.csv")
+GENE_CLS  = _GC_RECOMPUTED if os.path.exists(_GC_RECOMPUTED) else _GC_DEPOSITED
 TCGA_EXPR = path("data_root", "2026_final_atlas", "data", "cibersort_data_prev",
                  "tcga_ecotyper.txt")
 CLINICAL  = path("data_root", "2026_final_atlas", "data", "cibersort_data_prev",
@@ -99,9 +103,11 @@ def save_fig(fig, name):
 def plot_km(df, time_col, event_col, group_col, title, ax, colors=None):
     kmf = KaplanMeierFitter()
     groups = sorted(df[group_col].unique())
+    # colors is a {group_label: color} dict so the palette stays bound to the
+    # semantic label (SecA/SecB) rather than the alphabetical sort position.
     for i, g in enumerate(groups):
         m = df[group_col] == g
-        c = colors[i] if colors else None
+        c = colors.get(g) if colors else None
         kmf.fit(df.loc[m, time_col], df.loc[m, event_col], label=f"{g} (n={m.sum()})")
         kmf.plot_survival_function(ax=ax, ci_show=True, color=c, lw=1.5)
     ax.set_title(title, fontsize=9, weight="bold")
@@ -296,12 +302,20 @@ def main():
         km_imgs = []
         for ep, tcol, ecol in [("OS", "os_months", "os_event"), ("PFS", "pfs_months", "pfs_event")]:
             ep_label = "Overall Survival" if ep == "OS" else "Progression-Free Survival"
+            # Colors keyed by group label (matches the pd.cut() labels above) so
+            # blue/orange track SecA-/SecB-like semantics regardless of the
+            # alphabetical sort order used when plotting.
             for gcol, split_name, colors in [
-                ("secA_score_group", "SecA Score Median", [BLUE, ORANGE]),
-                ("secB_score_group", "SecB Score Median", [BLUE, ORANGE]),
-                ("polarization_group", "Polarization Median", [ORANGE, BLUE]),
-                ("polar_tertile", "Polarization Tertiles", [ORANGE, GREY, BLUE]),
-                ("polarization_weighted_group", "Weighted Polarization Median", [ORANGE, BLUE]),
+                ("secA_score_group", "SecA Score Median",
+                 {"SecA-low": BLUE, "SecA-high": ORANGE}),
+                ("secB_score_group", "SecB Score Median",
+                 {"SecB-low": BLUE, "SecB-high": ORANGE}),
+                ("polarization_group", "Polarization Median",
+                 {"SecB-like": ORANGE, "SecA-like": BLUE}),
+                ("polar_tertile", "Polarization Tertiles",
+                 {"SecB-like": ORANGE, "Intermediate": GREY, "SecA-like": BLUE}),
+                ("polarization_weighted_group", "Weighted Polarization Median",
+                 {"SecB-like (w)": ORANGE, "SecA-like (w)": BLUE}),
             ]:
                 sub = dfs.dropna(subset=[tcol, ecol, gcol])
                 if len(sub) < 20:
@@ -361,8 +375,13 @@ def main():
                                          "events": int(d[ecol].sum()), "followup": fu_label})
                 except Exception as e:
                     print(f"      {vname} (epi-adj): failed -- {e}")
+            # Full multivariate adjustment matches the manuscript model
+            # (polarization + epithelial fraction + stage + age). Platinum
+            # sensitivity is intentionally NOT a covariate here (author-approved;
+            # see manuscript-corrections). Platinum remains loaded/cached for
+            # subgroup analyses elsewhere.
             mv_cols = ["polarization", "epi_fraction"]
-            for c in ["stage_coded", "age", "platinum_coded"]:
+            for c in ["stage_coded", "age"]:
                 if c in sub.columns:
                     mv_cols.append(c)
             d = sub[[tcol, ecol] + mv_cols].dropna()

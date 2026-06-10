@@ -34,8 +34,7 @@ out_dir <- cfg_path("output_root", "19e_gene_gams_all_celltypes")
 dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
 
 sfe_dir <- dirname(cfg_obj("sfe_tma_filtered"))
-wt_names <- c("sfe_OTB_2384","sfe_OTB_2417","sfe_OTB_2432","sfe_OTB_2454",
-              "sfe_OTB_2457","sfe_OTB_2461","sfe_SP24_24824","sfe_SP24_25573")
+wt_names <- paste0("sfe_", CFG$cohort$whole_tissue)
 
 epi_types <- c("SecA epithelium","Intermediate epithelium","SecB epithelium")
 tme_types <- c("Macrophage","T cell","NK cell","Fibroblast","Endothelial",
@@ -49,8 +48,11 @@ all_tme <- list()
 for (nm in wt_names) {
   message("  Loading ", nm, "...")
   sfe <- loadHDF5SummarizedExperiment(file.path(sfe_dir, nm))
-  
+
   cl <- colData(sfe)$cell_label
+  # Idempotent legacy-label rename: deposited SFEs still carry the legacy
+  # "Transitioning epithelium"; epi_mask keys on "Intermediate epithelium".
+  cl[cl == "Transitioning epithelium"] <- "Intermediate epithelium"
   coords <- spatialCoords(sfe)
   pol <- colData(sfe)$polarization_UCell
   

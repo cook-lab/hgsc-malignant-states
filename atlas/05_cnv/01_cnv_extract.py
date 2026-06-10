@@ -104,8 +104,10 @@ def collect_reference_barcodes():
     ref_by_sample = {}
     total_pre = total_post = 0
 
-    for sid in all_sids:
-        per_comp = {n: ref_by_compartment[n].get(sid, []) for n in H5AD_REF}
+    # Sort sample IDs so the per-sample order of RNG draws is deterministic
+    # (set iteration order otherwise couples to the hash seed, defeating SEED).
+    for sid in sorted(all_sids):
+        per_comp = {n: sorted(ref_by_compartment[n].get(sid, [])) for n in H5AD_REF}
         n_total = sum(len(v) for v in per_comp.values())
         total_pre += n_total
 

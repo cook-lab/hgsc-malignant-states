@@ -14,7 +14,7 @@ INPUTS
       embedding; produced by figures/_prep/fig_secretory_polarization_00_prepare_data.py)
 
 OUTPUTS
-    - figures_dir/atlas_epithelial_secretory_ciliated_umap.{svg,png}
+    - figures_dir/figure1/atlas_epithelial_secretory_ciliated_umap.{svg,png}
 
 MANUSCRIPT PANEL(S): Fig 1F.
 
@@ -40,8 +40,8 @@ from config.config import path, SEED  # noqa: E402
 
 # ---------- Paths ----------
 META_PQ = path("data_root", "2026_final_atlas", "output", "fig_secretory_polarization", "data", "meta.parquet")
-OUT_SVG = path("figures_dir", "atlas_epithelial_secretory_ciliated_umap.svg")
-OUT_PNG = path("figures_dir", "atlas_epithelial_secretory_ciliated_umap.png")
+OUT_SVG = path("figures_dir", "figure1", "atlas_epithelial_secretory_ciliated_umap.svg")
+OUT_PNG = path("figures_dir", "figure1", "atlas_epithelial_secretory_ciliated_umap.png")
 
 assert os.path.exists(META_PQ), f"Epithelial-meta parquet missing: {META_PQ}"
 

@@ -13,7 +13,7 @@ INPUTS
           {20c_subtype_composition_summary.csv, 20c_per_sample_joined.csv}
 
 OUTPUTS
-    - figures_dir/atlas_tcga_subtype_epitype.{svg,png}
+    - figures_dir/figure3/atlas_tcga_subtype_epitype.{svg,png}
 
 MANUSCRIPT PANEL(S): Fig 3H.
 
@@ -42,8 +42,8 @@ from config.config import path  # noqa: E402
 TBL_DIR = path("data_root", "2026_final_atlas", "output", "20_consensusov", "tables")
 SUMMARY_CSV = os.path.join(TBL_DIR, "20c_subtype_composition_summary.csv")
 SAMPLE_CSV = os.path.join(TBL_DIR, "20c_per_sample_joined.csv")
-OUT_SVG = path("figures_dir", "atlas_tcga_subtype_epitype.svg")
-OUT_PNG = path("figures_dir", "atlas_tcga_subtype_epitype.png")
+OUT_SVG = path("figures_dir", "figure3", "atlas_tcga_subtype_epitype.svg")
+OUT_PNG = path("figures_dir", "figure3", "atlas_tcga_subtype_epitype.png")
 
 assert os.path.exists(SUMMARY_CSV), f"Missing: {SUMMARY_CSV}"
 assert os.path.exists(SAMPLE_CSV), f"Missing: {SAMPLE_CSV}"

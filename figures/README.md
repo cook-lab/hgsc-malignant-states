@@ -1,8 +1,15 @@
 # Figure Panel Map
 
-Maps every manuscript panel to the repository script that generates it. Source of truth: `_repro_refactor/reports/LINEAGE.md` (live generators), `_repro_refactor/reports/CANONICAL_SET.md` (migrate list), and the per-figure migration shards. Paths are relative to the repo root (`hgsc-malignant-states/`).
+Maps every manuscript panel to the repository script that generates it. This table is the source of truth for the panel→script mapping; each script's header docstring lists its exact inputs, outputs, and the panel(s) it supports. Paths are relative to the repo root (`hgsc-malignant-states/`).
 
 **Legend:** SecA = Secretory A (progenitor-like, NMF Factor 3); SecB = Secretory B (differentiated/adaptive, NMF Factor 2); Int = Intermediate. Per-figure scripts read cached intermediates produced by the `atlas/` and `spatial/` backends; the `figures/_prep/` helpers build shared caches (`meta.parquet`, atlas obs/UMAP parquets). External/known-gap panels are flagged in **Notes**.
+
+## Output location
+
+Every figure script writes its panel file(s) to a **per-figure subdirectory** under `OUTPUT_ROOT/figures/`:
+`figure1/` … `figure7/`, `supplementary/` (SF1–SF14), and the placeholder dirs `figure_icon7_bevacizumab/` /
+`figure_ccle_smac_mimetics/`. Nothing is written to the `figures/` root. Each panel is exported as both `.svg`
+(vector, for assembly) and `.png` (raster preview); spatial/ROI scripts may also emit `.pdf`.
 
 ## Main figures
 
@@ -40,10 +47,10 @@ Maps every manuscript panel to the repository script that generates it. Source o
 | Fig 5A | `figures/figure5/01_gam_epithelial_pathways_polarization.R` | |
 | Fig 5B,5C | `figures/figure5/02_roi_OTB_2384_roi06_svgs.R` | |
 | Fig 5D,5E | `figures/figure5/03_morphometrics_paired.py` | |
-| Fig 5F | `figures/figure5/04_atlas_seca_secb_autocrine_shift.py` | **KNOWN GAP / under investigation**: LIANA autocrine shift not reproducible from in-repo `17b_liana_global.csv` (see REPRODUCIBILITY.md P1-a) |
+| Fig 5F | `figures/figure5/04_atlas_seca_secb_autocrine_shift.py` | **KNOWN ISSUE**: generator reproduces the panel exactly, but thresholds on expression magnitude (`lrscore>0.5`), not significance (see REPRODUCIBILITY.md → Fig 5F) |
 | Fig 5G | `figures/figure5/05_gam_epithelial_genes_polarization.R` | |
-| Fig 5H | *(no in-repo generator)* | **KNOWN GAP**: cell-type map absent; generator `06_roi_SP24_24824_zoom_genes.R` only renders gene panels (5I), not invented |
-| Fig 5I | `figures/figure5/06_roi_SP24_24824_zoom_genes.R` | |
+| Fig 5H | `figures/figure5/06_roi_SP24_24824_zoom_genes.R` | cell-type map over the full SP24_24824 ROI (`SP24_24824_roi_celltype_full.*`); same script renders 5I |
+| Fig 5I | `figures/figure5/06_roi_SP24_24824_zoom_genes.R` | 4-gene full-ROI maps (CTNNB1/ITGB5/MMP7/ICAM1); shares script with 5H |
 | Fig 6A,6C | `figures/figure6/01_tma_hypoxia_gradient_cores.R` | writes `gradient_metrics.csv` consumed by scripts 03/04 |
 | Fig 6B | `figures/figure6/02_niche_immune_composition_gam.R` | |
 | Fig 6D | `figures/figure6/03_tma_gradient_cores_immune_highlight_svgs.R` (immune) + `04_tma_gradient_cores_secb_highlight.R` (SecB) | |
@@ -55,6 +62,13 @@ Maps every manuscript panel to the repository script that generates it. Source o
 | Fig 7A,7B | `figures/figure7/01_xenium_forest_cox.R` | Cox forest OS/PFS |
 | Fig 7C,7D | `figures/figure7/02_xenium_protein_correlation_row.py` | |
 | Fig 7E,7F,7G | `figures/figure7/03_tcga_km_forest.R` | TCGA KM + stepwise Cox; BayesPrism covariate-set caveat (REPRODUCIBILITY.md P2-b) |
+
+## Pending / placeholder panels (not yet assigned a manuscript number)
+
+| Panel | Script | Notes |
+|---|---|---|
+| *TBD (expanded Fig 7)* | `figures/figure_icon7_bevacizumab/01_icon7_bev_slope_reversal.R` | **PLACEHOLDER** — ICON7/GSE140082 bevacizumab external validation (SecB prognostic under chemo, abolished by bev). Reads `cfg_obj("icon7_cohort")`; in-script per-arm Cox. Rename dir + assign panel once decided. Source module + full report: `…/2026_final_xenium_analysis/davids side quests/ICON7/`. |
+| *TBD (supplementary / mechanistic)* | `figures/figure_ccle_smac_mimetics/02_prism_smac_mimetics.R` (main) + `03_crispr_targeted_nfkb.R` (support); prereq `01_score_hgsc_lines.R` | **PLACEHOLDER** — CCLE/DepMap 24Q4 + PRISM 25Q2. SecB-polarized HGSC lines are selectively sensitive to SMAC mimetics (LCL-161 ρ=−1.00 p=0.017; GDC-0152 ρ=−0.71 p=0.088; birinapant ρ=−0.50), but NOT to chemo controls; single-gene BIRC3 Chronos is null/opposite (ρ=+0.22) — IAP family redundancy interpretation — while upstream TRAF2 trends (ρ=−0.45). Reads `cfg_obj("ccle_line_scores")` + raw Chronos/PRISM. Source module + report: `…/davids side quests/ccle_depmap/`. |
 
 ## Supplementary figures
 
@@ -96,9 +110,9 @@ Maps every manuscript panel to the repository script that generates it. Source o
 
 - `figures/_prep/00_extract_atlas_obs.py` — atlas obs QC caches (SF1)
 - `figures/_prep/00b_extract_integration_umaps.py` — integration UMAP caches (SF2B/C)
+- `figures/_prep/01_export_tma_barcode_patient_map.py` — TMA barcode->patient map for Fig 4A/B
 - `figures/_prep/fig_secretory_polarization_00_prepare_data.py` — shared `schema_nmf` `meta.parquet` (Fig 1F/G/H/I, 2C/D/E/G, SF5/6/9)
-- `figures/supplementary/00_extract_atlas_obs.py`, `figures/supplementary/00b_extract_integration_umaps.py` — supplementary-side cache copies
 
 ## Panel-map completeness
 
-All numbered manuscript panels Fig 1A..7G, SF1..SF14, and Supp Data 1-7 are accounted for. The only panels **without an in-repo generator** are the documented external/known-gap panels: **Fig 3A,3B,3D,3E,3F,3G** (external organoid data, TRUST-EXISTING), **Fig 3C** (external flow cytometry), and **Fig 5H** (cell-type map absent from the canonical 5I gene-panel generator). **Fig 5F** has a generator but its claim is under investigation (LIANA non-reproducible). See `docs/REPRODUCIBILITY.md` for the full audit verdict and known-issues list.
+All numbered manuscript panels Fig 1A..7G, SF1..SF14, and Supp Data 1-7 are accounted for. The only panels **without an in-repo generator** are the documented external/known-gap panels: **Fig 3A,3B,3D,3E,3F,3G** (external organoid data, TRUST-EXISTING) and **Fig 3C** (external flow cytometry). **Fig 5F** has a generator and reproduces exactly, but carries a statistical-threshold caveat (see `docs/REPRODUCIBILITY.md`). See `docs/REPRODUCIBILITY.md` for the full audit verdict and known-issues list.

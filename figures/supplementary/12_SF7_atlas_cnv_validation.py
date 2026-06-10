@@ -10,9 +10,9 @@ Purpose
     fraction descending; a CNV-verdict ribbon sits above each sample group.
 
 INPUTS
-    output_root/19_cnv/tables/within_clone_coexistence.csv
-    output_root/19_cnv/tables/per_sample_verdict.csv
-    output_root/19_cnv/tables/sample_manifest.csv
+    data_root/2026_final_atlas/output/19_cnv/tables/within_clone_coexistence.csv
+    data_root/2026_final_atlas/output/19_cnv/tables/per_sample_verdict.csv
+    data_root/2026_final_atlas/output/19_cnv/tables/sample_manifest.csv
         (atlas step 19_cnv chain; annotation rev = NMF schema_nmf)
 
 OUTPUTS
@@ -42,9 +42,9 @@ from config.config import path  # noqa: E402
 # PATHS (central config)
 # ============================================================================
 
-COEX_CSV = path("output_root", "19_cnv", "tables", "within_clone_coexistence.csv")
-VERDICT_CSV = path("output_root", "19_cnv", "tables", "per_sample_verdict.csv")
-MANIFEST_CSV = path("output_root", "19_cnv", "tables", "sample_manifest.csv")
+COEX_CSV = path("data_root", "2026_final_atlas", "output", "19_cnv", "tables", "within_clone_coexistence.csv")
+VERDICT_CSV = path("data_root", "2026_final_atlas", "output", "19_cnv", "tables", "per_sample_verdict.csv")
+MANIFEST_CSV = path("data_root", "2026_final_atlas", "output", "19_cnv", "tables", "sample_manifest.csv")
 OUT_SVG = path("output_root", "figures", "supplementary", "SF7_atlas_cnv_validation.svg")
 OUT_PNG = path("output_root", "figures", "supplementary", "SF7_atlas_cnv_validation.png")
 

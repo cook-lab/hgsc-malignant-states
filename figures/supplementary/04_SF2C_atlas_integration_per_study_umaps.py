@@ -9,7 +9,7 @@ Purpose
     clusters (no study-specific islands).
 
 INPUTS
-    output_root/figures/data/atlas_final_umap.parquet
+    output_root/_prep_caches/atlas_final_umap.parquet
         (columns used: UMAP1, UMAP2, study; from 00b_extract_integration_umaps.py)
 
 OUTPUTS
@@ -40,7 +40,7 @@ np.random.seed(SEED)
 # PATHS (central config)
 # ============================================================================
 
-DATA_PQ = path("output_root", "figures", "data", "atlas_final_umap.parquet")
+DATA_PQ = path("output_root", "_prep_caches", "atlas_final_umap.parquet")
 OUT_SVG = path("output_root", "figures", "supplementary", "SF2C_atlas_integration_per_study_umaps.svg")
 OUT_PNG = path("output_root", "figures", "supplementary", "SF2C_atlas_integration_per_study_umaps.png")
 

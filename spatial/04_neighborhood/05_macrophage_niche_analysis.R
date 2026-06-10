@@ -43,14 +43,17 @@ message(sprintf("Loaded %s neighborhood assignments",
 
 # --- SFE names ---------------------------------------------------------------
 
-sfe_names <- c("sfe_tma_filtered", "sfe_OTB_2384", "sfe_OTB_2417", "sfe_OTB_2432",
-               "sfe_OTB_2454", "sfe_OTB_2457", "sfe_OTB_2461",
-               "sfe_SP24_24824", "sfe_SP24_25573")
+sfe_names <- c("sfe_tma_filtered", sfe_names_wt)
 
 # --- Niche definitions -------------------------------------------------------
 
-niche_a <- "Immune niche"                # nb_2 — dedicated immune neighborhood
-niche_b <- "SecB-enriched epithelium"    # nb_6 — SecB end of trajectory, immune cells in tumor context
+# Canonical niche names from 00_setup `nb_names` (identities verified against
+# output/09_neighborhood/neighborhood_composition.csv). These previously read
+# "Immune niche" / "SecB-enriched epithelium", which match NO entry in the
+# canonical map, so the niche filter below selected ZERO cells (audit B1).
+niche_a <- "Immune-rich niche"             # nb_4 — dedicated immune/macrophage neighborhood
+niche_b <- "Intermediate-SecB epithelium"  # nb_5 — SecB-rich epithelial niche (immune cells in tumour context)
+stopifnot(all(c(niche_a, niche_b) %in% nb_names))  # fail loudly on future name drift
 
 # --- Macrophage polarization gene sets (curated for Xenium 541-gene panel) ---
 
@@ -79,14 +82,26 @@ mac_meta_list  <- list()
 mac_expr_list  <- list()
 gradient_list  <- list()  # for spatial gradient analysis
 
-# Epithelial neighborhoods for gradient analysis
-epi_nbs <- c("nb_4", "nb_7", "nb_9", "nb_3")  # nb_10 is epi-stroma interface
+# Reference neighborhoods for the macrophage distance-gradient sub-analysis.
+# Labels MUST match the canonical 00_setup `nb_names` for each nb_ index — the
+# previous labels were drifted (e.g. nb_4, the dedicated immune niche, was
+# mislabeled "Ciliated-mesenchymal"; nb_7 "Intermediate epithelium"; nb_9
+# "Vascular-stromal"). The SAME nb_ set is kept (we measure macrophage distance
+# to these reference niches); only the labels are corrected to canonical names.
+# NOTE: of these four, only nb_7 is epithelial. nb_4/nb_9/nb_3 are immune /
+# stromal-vascular / fibroblast niches — retained as distance references but not
+# epithelial (see flagged_for_user: the "epithelial neighborhoods" framing is a
+# misnomer for 3 of 4). nb_5 ("Intermediate-SecB epithelium") is the SecB
+# epithelial niche (== niche_b) and is intentionally not used here as a distance
+# reference to avoid measuring distance of nb_5-resident macrophages to nb_5.
+epi_nbs <- c("nb_4", "nb_7", "nb_9", "nb_3")
 epi_nb_labels <- c(
-  nb_4  = "Ciliated-mesenchymal",
-  nb_7  = "Intermediate epithelium",
-  nb_9  = "Vascular-stromal",
-  nb_3  = "Fibroblast-rich stroma"
+  nb_4  = "Immune-rich niche",          # canonical (immune/macrophage niche; non-epithelial)
+  nb_7  = "SecA-mixed epithelium",      # canonical (epithelial)
+  nb_9  = "Stromal-vascular niche",     # canonical (non-epithelial)
+  nb_3  = "Fibroblast-rich stroma"      # canonical (non-epithelial)
 )
+stopifnot(all(epi_nb_labels %in% nb_names))  # fail loudly on future name drift
 
 for (sname in sfe_names) {
 

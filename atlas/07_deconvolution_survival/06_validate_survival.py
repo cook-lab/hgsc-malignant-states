@@ -57,8 +57,12 @@ from lifelines import CoxPHFitter
 # ── Paths ─────────────────────────────────────────────────────
 OUT_DIR     = path("output_root", "07_deconvolution_survival")
 SCORES      = os.path.join(OUT_DIR, "22d_signature_scores.csv")
-GENE_CLS    = path("data_root", "2026_final_atlas", "output", "11e_nmf_characterization",
-                   "11e_gene_classification.csv")
+# Prefer the regenerated classification (atlas/03/01b_gene_classification.py); fall
+# back to the deposited copy if a clean re-run has not produced it (audit A4/H4).
+_GC_RECOMPUTED = path("output_root", "03_epithelial_nmf", "11e_gene_classification.csv")
+_GC_DEPOSITED  = path("data_root", "2026_final_atlas", "output", "11e_nmf_characterization",
+                      "11e_gene_classification.csv")
+GENE_CLS    = _GC_RECOMPUTED if os.path.exists(_GC_RECOMPUTED) else _GC_DEPOSITED
 TCGA_EXPR   = path("data_root", "2026_final_atlas", "data", "cibersort_data_prev",
                    "tcga_ecotyper.txt")
 CLINICAL    = path("data_root", "2026_final_atlas", "data", "cibersort_data_prev",

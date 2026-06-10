@@ -414,6 +414,11 @@ if (do_writeback_only || do_run_all) {
 
       # Archive current cell_label (06f)
       cd$cell_label_06f <- as.character(cd$cell_label)
+      # Rename-mismatch fix: deposited SFEs / 06f cache still carry the legacy
+      # "Transitioning epithelium"; standardize to the canonical "Intermediate
+      # epithelium" before this vector is used as a fallback into the final
+      # cell_label and matched against sec_classes (idempotent — no-op if absent).
+      cd$cell_label_06f[cd$cell_label_06f == "Transitioning epithelium"] <- "Intermediate epithelium"
 
       cd$rctd_first_type   <- rctd_meta$rctd_first_type
       cd$rctd_second_type  <- rctd_meta$rctd_second_type

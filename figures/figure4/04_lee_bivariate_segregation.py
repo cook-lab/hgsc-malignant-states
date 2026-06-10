@@ -12,7 +12,7 @@ INPUTS
     - output_root/44_spatial_autocorrelation/tma_patient_level_lee.csv    (TMA L)
 
 OUTPUTS
-    - figures_dir/lee_bivariate_segregation.{png,svg}
+    - figures_dir/figure4/lee_bivariate_segregation.{png,svg}
 
 MANUSCRIPT PANEL(S): Fig 4E.
 
@@ -34,10 +34,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from config.config import path, SEED  # noqa: E402
 
 # ---------- Paths ----------
-INTERP = path("output_root", "44_spatial_autocorrelation", "interpretation_summary.csv")
-TMA_PT = path("output_root", "44_spatial_autocorrelation", "tma_patient_level_lee.csv")
-OUT_PNG = path("figures_dir", "lee_bivariate_segregation.png")
-OUT_SVG = path("figures_dir", "lee_bivariate_segregation.svg")
+INTERP = path("data_root", "2026_final_xenium_analysis", "output", "44_spatial_autocorrelation", "interpretation_summary.csv")
+TMA_PT = path("data_root", "2026_final_xenium_analysis", "output", "44_spatial_autocorrelation", "tma_patient_level_lee.csv")
+OUT_PNG = path("figures_dir", "figure4", "lee_bivariate_segregation.png")
+OUT_SVG = path("figures_dir", "figure4", "lee_bivariate_segregation.svg")
 
 # ---------- Style ----------
 FA, FK, FN = 6, 5.5, 5

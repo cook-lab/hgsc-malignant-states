@@ -52,7 +52,7 @@ from config.config import path  # noqa: E402
 # PATHS (central config)
 # ============================================================================
 
-DATA_DIR_KEY = ("output_root", "21_epitype_functional_characterization")
+DATA_DIR_KEY = ("data_root", "2026_final_atlas", "output", "21_epitype_functional_characterization")
 MODULE_INFO = path("data_root", "2026_final_atlas", "tools", "scFEA", "data",
                    "Human_M168_information.symbols.csv")
 OUT_SVG = path("output_root", "figures", "supplementary", "SF8_atlas_functional_heatmap.svg")

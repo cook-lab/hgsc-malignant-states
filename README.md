@@ -120,7 +120,9 @@ are run and benchmarked** (scVI, scANVI, MrVI, SysVI, Harmony; step 06 scib-metr
 computationally expensive (originally run on a GPU cluster) and is **not required** to
 reproduce downstream results — the integrated atlas object (`hgsc_atlas_scanvi.h5ad`) is
 provided as a deposited entry object — but the integration code is included so that every
-step is open to scrutiny and can be independently re-executed.
+step is open to scrutiny and can be independently re-executed (now seeded from `config.seed`;
+GPU model training is best-effort-deterministic, **not** bit-identical across hardware, so the
+deposited `hgsc_atlas_scanvi.h5ad` is the canonical reference — see docs/REPRODUCIBILITY.md).
 
 ## Integration is included (optional to re-run)
 

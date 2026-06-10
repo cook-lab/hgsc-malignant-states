@@ -33,9 +33,7 @@ dir.create(OUT_DIR, recursive = TRUE, showWarnings = FALSE)
 dir.create(file.path(OUT_DIR, "figures"), recursive = TRUE,
             showWarnings = FALSE)
 
-WT_SAMPLES <- c("sfe_OTB_2384", "sfe_OTB_2417", "sfe_OTB_2432",
-                "sfe_OTB_2454", "sfe_OTB_2457", "sfe_OTB_2461",
-                "sfe_SP24_24824", "sfe_SP24_25573")
+WT_SAMPLES <- sfe_names_wt
 EPI_LBLS <- c("SecA epithelium", "Intermediate epithelium", "SecB epithelium")
 RADIUS_UM <- 50
 DOM_RATIO <- 3   # 3:1 dominance threshold
@@ -55,6 +53,10 @@ override_with_06f <- function(sfe, sample_key) {
   hit <- !is.na(m)
   lab <- as.character(sfe$cell_label)
   lab[hit] <- sub$cell_label_06f[m[hit]]
+  # Idempotent rename: SFE/06f sources still carry the legacy epithelial label
+  # "Transitioning epithelium"; standardize to "Intermediate epithelium" so the
+  # downstream EPI_LBLS match/filter does not silently drop the Intermediate epitype.
+  lab[lab == "Transitioning epithelium"] <- "Intermediate epithelium"
   sfe$cell_label <- lab
   sfe
 }

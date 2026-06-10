@@ -19,7 +19,11 @@
 #
 # INPUTS:
 #   - <sfe_dir>/sfe_tma, <sfe_dir>/sfe_<wt>  (annotated SFEs)
-#   - obj("atlas_ucell_dir") / atlas 18_ucell_atlas exports:
+#   - atlas UCell exports (from atlas/03_epithelial_nmf 03_ucell_atlas_export.py
+#       + 04_ucell_atlas_scoring.R), read from
+#       output_root/03_epithelial_nmf/ucell_atlas/ (preferred) or the deposited
+#       data_root/2026_final_atlas/output/18_ucell_atlas/ (fallback);
+#       override with ATLAS_UCELL_DIR:
 #       atlas_gene_list.txt, atlas_secretory_counts.mtx.gz,
 #       atlas_secretory_barcodes.tsv, atlas_secretory_genes.tsv,
 #       atlas_secretory_metadata.csv
@@ -67,12 +71,24 @@ for (d in c(out_path, fig_path)) {
   if (!dir.exists(d)) dir.create(d, recursive = TRUE)
 }
 
-# Atlas UCell export dir (18_ucell_atlas), overridable via env var.
-atlas_dir <- Sys.getenv(
-  "ATLAS_UCELL_DIR",
-  unset = file.path(path.expand(CFG$paths$data_root),
-                    "2026_final_atlas", "output", "18_ucell_atlas")
+# Atlas UCell export dir. The atlas backend (atlas/03_epithelial_nmf/
+# 03_ucell_atlas_export.py + 04_ucell_atlas_scoring.R) writes these exports to
+# output_root/03_epithelial_nmf/ucell_atlas/. Prefer that regenerated copy on a
+# clean run; fall back to the deposited input under data_root
+# (2026_final_atlas/output/18_ucell_atlas/) — same precedence as load_sfe().
+# ATLAS_UCELL_DIR overrides both if set.
+.atlas_ucell_candidates <- c(
+  file.path(out_dir, "03_epithelial_nmf", "ucell_atlas"),
+  file.path(path.expand(CFG$paths$data_root),
+            "2026_final_atlas", "output", "18_ucell_atlas")
 )
+atlas_dir <- Sys.getenv("ATLAS_UCELL_DIR", unset = "")
+if (!nzchar(atlas_dir)) {
+  hit <- .atlas_ucell_candidates[file.exists(
+    file.path(.atlas_ucell_candidates, "atlas_gene_list.txt"))]
+  atlas_dir <- if (length(hit) > 0) hit[1] else .atlas_ucell_candidates[1]
+}
+message("Atlas UCell export dir: ", atlas_dir)
 
 sfe_names <- sfe_names_all   # sfe_tma + published 8 whole tissues (cohort PIN)
 

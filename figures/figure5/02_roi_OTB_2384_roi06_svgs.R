@@ -63,6 +63,10 @@ m <- match(colnames(sfe), recl[sample == SAMPLE, barcode_orig])
 hit <- !is.na(m)
 lab <- as.character(sfe$cell_label)
 lab[hit] <- recl[sample == SAMPLE, cell_label_06f][m[hit]]
+# Rename-mismatch fix (idempotent): the 06f cache (and SFE) still carry the
+# legacy "Transitioning epithelium"; standardize on the SAME 'lab' vector that
+# EPI_TYPES filtering (~line 100) and the cell_label colour scale key on.
+lab[lab == "Transitioning epithelium"] <- "Intermediate epithelium"
 sfe$cell_label <- lab
 
 # ── Subset to ROI ────────────────────────────────────────────────────────

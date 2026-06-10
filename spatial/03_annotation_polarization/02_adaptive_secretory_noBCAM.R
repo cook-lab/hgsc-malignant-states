@@ -74,10 +74,15 @@ for (sname in sfe_names) {
   is_sec[is.na(is_sec)] <- FALSE
   n_sec <- sum(is_sec)
 
-  if ("secretory_subtype" %in% colnames(colData(sfe))) {
+  # Archive the PRISTINE pre-relabel columns exactly once. Guard on the *_old
+  # column already existing so an accidental re-run does not clobber the saved
+  # originals with values this script has already overwritten (idempotency).
+  if ("secretory_subtype" %in% colnames(colData(sfe)) &&
+      !"secretory_subtype_old" %in% colnames(colData(sfe))) {
     sfe$secretory_subtype_old <- sfe$secretory_subtype
   }
-  if ("cell_label" %in% colnames(colData(sfe))) {
+  if ("cell_label" %in% colnames(colData(sfe)) &&
+      !"cell_label_old" %in% colnames(colData(sfe))) {
     sfe$cell_label_old <- sfe$cell_label
   }
 

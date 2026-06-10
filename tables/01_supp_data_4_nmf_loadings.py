@@ -131,17 +131,17 @@ def _relabel_intermediate(level2):
 # LOAD & PREPROCESS
 # ============================================================================
 def load_epithelial():
-    print("  [LOAD] Opening epithelial h5ad (backed)...", flush=True)
+    print("  [LOAD] Opening epithelial h5ad (in-memory)...", flush=True)
     t0 = time.time()
-    bdata = ad.read_h5ad(H5AD, backed="r")
+    bdata = ad.read_h5ad(H5AD)  # in-memory: anndata 0.12.2 backed-sparse read is broken (audit H10)
     n_cells = bdata.n_obs
     genes = bdata.var_names.tolist()
     level2 = _relabel_intermediate(bdata.obs["celltype_level2"].values.astype(str))
     barcodes = bdata.obs.index.values.copy()
     umap_local = np.array(bdata.obsm["X_umap_local"])
     print(f"    Extracting counts matrix ({n_cells:,} x {len(genes):,})...", flush=True)
-    counts = bdata.layers["counts"][:, :]
-    bdata.file.close(); del bdata; gc.collect()
+    counts = bdata.layers["counts"]
+    del bdata; gc.collect()
     adata = ad.AnnData(
         X=counts,
         obs=pd.DataFrame({"celltype_level2": level2}, index=barcodes),
@@ -404,13 +404,16 @@ def main():
     print("  Supp Data 4 — Epithelial NMF (SecA/SecB loadings)")
     print("=" * 65)
 
-    usage_path = os.path.join(OUT_DIR, "11d_nmf_usage.csv")
+    usage_path = os.path.join(OUT_DIR, "11d_nmf_usage.csv")          # write target (recompute path)
     loadings_path = os.path.join(OUT_DIR, "11d_nmf_loadings.csv")
+    # Deposited 11d caches (read in --figures_only mode; recompute writes to OUT_DIR).
+    usage_in = path("data_root", "2026_final_atlas", "output", "11d_epithelial_nmf", "11d_nmf_usage.csv")
+    loadings_in = path("data_root", "2026_final_atlas", "output", "11d_epithelial_nmf", "11d_nmf_loadings.csv")
 
-    if args.figures_only and os.path.exists(usage_path) and os.path.exists(loadings_path):
-        print("\n  [LOAD] Reading saved NMF results...")
-        usage_df = pd.read_csv(usage_path, index_col=0)
-        loadings_df = pd.read_csv(loadings_path, index_col=0)
+    if args.figures_only and os.path.exists(usage_in) and os.path.exists(loadings_in):
+        print("\n  [LOAD] Reading deposited NMF results...")
+        usage_df = pd.read_csv(usage_in, index_col=0)
+        loadings_df = pd.read_csv(loadings_in, index_col=0)
         k = len(loadings_df)
         with h5py.File(H5AD, "r") as f:
             umap_coords = np.array(f["obsm"]["X_umap_local"])

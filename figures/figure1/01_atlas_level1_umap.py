@@ -13,7 +13,7 @@ INPUTS
       data_fig1 extraction set.
 
 OUTPUTS
-    - figures_dir/atlas_level1_umap.{svg,png}
+    - figures_dir/figure1/atlas_level1_umap.{svg,png}
 
 MANUSCRIPT PANEL(S): Fig 1A.
 
@@ -37,8 +37,8 @@ from config.config import path, SEED  # noqa: E402
 
 # ---------- Paths ----------
 META_PQ = path("data_root", "202605_epitype_manuscript", "final_publication_figures", "data_fig1", "meta.parquet")
-OUT_SVG = path("figures_dir", "atlas_level1_umap.svg")
-OUT_PNG = path("figures_dir", "atlas_level1_umap.png")
+OUT_SVG = path("figures_dir", "figure1", "atlas_level1_umap.svg")
+OUT_PNG = path("figures_dir", "figure1", "atlas_level1_umap.png")
 
 assert os.path.exists(META_PQ), f"Cached meta parquet missing: {META_PQ}"
 

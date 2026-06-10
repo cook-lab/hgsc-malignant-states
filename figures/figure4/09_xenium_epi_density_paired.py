@@ -13,7 +13,7 @@ INPUTS
       (dens_<epitype>_epithelium columns; "source" == "WT" | "TMA")
 
 OUTPUTS
-    - figures_dir/xenium_epi_density_paired.{png,svg}
+    - figures_dir/figure4/xenium_epi_density_paired.{png,svg}
 
 MANUSCRIPT PANEL(S): Fig 4J.
 
@@ -39,9 +39,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from config.config import path  # noqa: E402
 
 # ---------- Paths ----------
-PER_PATIENT = path("output_root", "10_clinical_v2", "per_patient_features_v2.csv")
-OUT_PNG = path("figures_dir", "xenium_epi_density_paired.png")
-OUT_SVG = path("figures_dir", "xenium_epi_density_paired.svg")
+PER_PATIENT = path("data_root", "2026_final_xenium_analysis", "output", "10_clinical_v2", "per_patient_features_v2.csv")
+OUT_PNG = path("figures_dir", "figure4", "xenium_epi_density_paired.png")
+OUT_SVG = path("figures_dir", "figure4", "xenium_epi_density_paired.svg")
 
 # ---------- Style ----------
 FA, FK, FN = 8, 7, 6.5

@@ -110,8 +110,12 @@ EPITHELIAL_SHORT = {
     "Adaptive secretory epithelial cell":        "Adaptive secretory",
     "Stress-response secretory epithelial cell": "Stress-response",
     "Ciliated epithelial cell":                  "Ciliated",
-    "Transitioning epithelial cell":             "Intermediate",
+    "Transitioning epithelial cell":             "Transitioning",
 }
+# NOTE: this level-2 cluster is the validated annotation "Transitioning epithelial
+# cell" (08c) — NOT the NMF polarization Intermediate (p50-p75) class. It is
+# displayed under its own name to avoid colliding with the polarization vocabulary
+# (audit B3); 10c/12b classify this cluster nearer the SecA extreme.
 
 NA_COLOR = "#999999"
 

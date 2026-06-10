@@ -40,7 +40,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from config.config import path  # noqa: E402
+from config.config import path, SEED  # noqa: E402
 
 # =========================
 # CONFIG
@@ -58,6 +58,9 @@ import scanpy as sc
 import pandas as pd
 import numpy as np
 import scipy.sparse as sp
+
+np.random.seed(SEED)  # seed numpy RNG — best-effort (UMAP/Leiden below use scanpy's own
+# deterministic default random_state; deposited object is the trust boundary)
 import argparse
 import os
 

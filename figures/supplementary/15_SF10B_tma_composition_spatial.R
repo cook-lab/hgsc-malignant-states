@@ -64,6 +64,10 @@ immune_types <- c("Macrophage", "T cell", "NK cell", "B cell",
 
 all_types <- c(epi_types, stromal_types, immune_types)
 present <- intersect(all_types, unique(cd$cell_label))
+# SFE colData still carries the legacy literal "Transitioning epithelium";
+# rename to the standardized "Intermediate epithelium" before factor() so these
+# cells are retained (otherwise they fall outside `present` levels and drop).
+cd[cell_label == "Transitioning epithelium", cell_label := "Intermediate epithelium"]
 cd[, cell_label := factor(cell_label, levels = present)]
 pal <- ref_palette[present]
 

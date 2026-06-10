@@ -37,7 +37,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from config.config import path  # noqa: E402
+from config.config import path, SEED  # noqa: E402
 
 # =========================
 # CONFIG
@@ -56,7 +56,12 @@ import pandas as pd
 import numpy as np
 import scipy.sparse as sp
 from scvi.external import CellAssign
+import scvi
 import os
+
+scvi.settings.seed = SEED  # seed numpy/torch/scvi for CellAssign training — best-effort
+# (GPU training is not guaranteed bit-reproducible; the deposited integrated object is
+# the trust boundary / entry point — see docs/REPRODUCIBILITY.md).
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt

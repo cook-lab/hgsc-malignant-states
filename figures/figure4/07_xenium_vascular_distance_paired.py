@@ -14,7 +14,7 @@ INPUTS
        tissue == "whole_tissue" | "TMA")
 
 OUTPUTS
-    - figures_dir/xenium_vascular_distance_paired.{png,svg}
+    - figures_dir/figure4/xenium_vascular_distance_paired.{png,svg}
 
 MANUSCRIPT PANEL(S): Fig 4H.
 
@@ -39,9 +39,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from config.config import path  # noqa: E402
 
 # ---------- Paths ----------
-SUMMARY = path("output_root", "22_vascular_proximity", "vascular_distance_summary.csv")
-OUT_PNG = path("figures_dir", "xenium_vascular_distance_paired.png")
-OUT_SVG = path("figures_dir", "xenium_vascular_distance_paired.svg")
+SUMMARY = path("data_root", "2026_final_xenium_analysis", "output", "22_vascular_proximity", "vascular_distance_summary.csv")
+OUT_PNG = path("figures_dir", "figure4", "xenium_vascular_distance_paired.png")
+OUT_SVG = path("figures_dir", "figure4", "xenium_vascular_distance_paired.svg")
 
 # ---------- Style ----------
 FA, FK, FN = 8, 7, 6.5
@@ -67,6 +67,7 @@ PAL = {"SecA epithelium": "#E6A141", "Intermediate epithelium": "#C08E48",
 
 # ---------- Load + pivot ----------
 d = pd.read_csv(SUMMARY)
+d["cell_label"] = d["cell_label"].replace({"Transitioning epithelium": "Intermediate epithelium"})
 
 
 def pivot_wide(sub):

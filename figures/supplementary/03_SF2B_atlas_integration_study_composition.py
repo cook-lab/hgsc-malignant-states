@@ -9,7 +9,7 @@ Purpose
     rather than being dominated by one.
 
 INPUTS
-    output_root/figures/data/atlas_final_umap.parquet
+    output_root/_prep_caches/atlas_final_umap.parquet
         (columns used: study, celltype_pred; from 00b_extract_integration_umaps.py)
 
 OUTPUTS
@@ -39,7 +39,7 @@ from config.config import path  # noqa: E402
 # PATHS (central config)
 # ============================================================================
 
-DATA_PQ = path("output_root", "figures", "data", "atlas_final_umap.parquet")
+DATA_PQ = path("output_root", "_prep_caches", "atlas_final_umap.parquet")
 OUT_SVG = path("output_root", "figures", "supplementary", "SF2B_atlas_integration_study_composition.svg")
 OUT_PNG = path("output_root", "figures", "supplementary", "SF2B_atlas_integration_study_composition.png")
 

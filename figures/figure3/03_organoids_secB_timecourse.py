@@ -11,11 +11,12 @@ INPUTS
     - OPTO-098 scored cells : <organoids_root>/output/08_OPTO98_SecB_Conditions/
         opto98_ucell_scores_aligned.csv  (experiment == "Growth"; sample_id day)
         EXTERNAL DEPENDENCY (override ORGANOIDS_ROOT).
-    - atlas reference : output_root/18_ucell_atlas/{atlas_ucell_scores.csv,
-        atlas_secretory_metadata.csv}
+    - atlas reference : data_root/2026_final_atlas/output/18_ucell_atlas/
+        {atlas_ucell_scores.csv, atlas_secretory_metadata.csv}
+        (deposited cache; subsampled 20,000 per NMF label, seed=SEED)
 
 OUTPUTS
-    - figures_dir/organoids_secB_timecourse.{png,svg}
+    - figures_dir/figure3/organoids_secB_timecourse.{png,svg}
 
 MANUSCRIPT PANEL(S): Fig 3D.
 
@@ -37,15 +38,15 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from config.config import obj, path, SEED  # noqa: E402
+from config.config import path, SEED  # noqa: E402
 
 # ---------- Paths ----------
-OPTO_CSV = os.path.join(obj("organoids_root"),
+OPTO_CSV = path("organoids_root",
                         "output/08_OPTO98_SecB_Conditions/opto98_ucell_scores_aligned.csv")
 ATLAS_SCORES = path("data_root", "2026_final_atlas", "output", "18_ucell_atlas", "atlas_ucell_scores.csv")
 ATLAS_META = path("data_root", "2026_final_atlas", "output", "18_ucell_atlas", "atlas_secretory_metadata.csv")
-OUT_PNG = path("figures_dir", "organoids_secB_timecourse.png")
-OUT_SVG = path("figures_dir", "organoids_secB_timecourse.svg")
+OUT_PNG = path("figures_dir", "figure3", "organoids_secB_timecourse.png")
+OUT_SVG = path("figures_dir", "figure3", "organoids_secB_timecourse.svg")
 
 # ---------- Style ----------
 FA, FK, FN = 6, 5.5, 5
@@ -77,6 +78,11 @@ day_data = [opto.loc[opto["sample_id"] == d, "SecB_UCell"].values for d in DAY_O
 atlas_scores = pd.read_csv(ATLAS_SCORES)
 atlas_meta = pd.read_csv(ATLAS_META, index_col=0)
 atlas = atlas_meta.join(atlas_scores.set_index("barcode"), how="inner")
+# Atlas NMF label standardized on read: the deposited cache stores the legacy
+# "Transitioning epithelium" label; rename to "Intermediate epithelium" so the
+# reference-line filter (ATLAS_PAL keys) matches. Display only.
+atlas["celltype_nmf"] = atlas["celltype_nmf"].replace(
+    {"Transitioning epithelium": "Intermediate epithelium"})
 rng = np.random.default_rng(SEED)
 atlas_medians = {}
 for label in ATLAS_PAL.keys():

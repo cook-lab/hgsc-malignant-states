@@ -12,10 +12,12 @@ INPUTS
 
 OUTPUTS
     output_root/02_annotation/09f_dotplot_canonical_markers/dotplot_stats.csv
+    output_root/02_annotation/09f_dotplot_canonical_markers/lilra4_stats.csv   (LILRA4/pDC row for SF4B)
     output_root/02_annotation/09f_dotplot_canonical_markers/dotplot_canonical_markers.{svg,pdf}
 
 MANUSCRIPT PANEL(S)
-    SF4B (canonical marker dotplot; the figure script reads dotplot_stats.csv).
+    SF4B (canonical marker dotplot; the figure script reads dotplot_stats.csv +
+    lilra4_stats.csv).
 
 RUNTIME TIER
     moderate (backed read; marker-gene subset into memory).
@@ -123,6 +125,10 @@ MARKERS = {
 
 GENE_ORDER = [g for ct in CELLTYPE_ORDER for g in MARKERS[ct]]
 
+# LILRA4 (pDC marker) is not part of the celltype_level1 MARKERS panel, but SF4B
+# appends it as a separate row; emitted to its own lilra4_stats.csv (same schema).
+LILRA4_GENES = ["LILRA4"]
+
 
 def load_marker_data():
     print("Opening atlas in backed mode ...")
@@ -134,8 +140,10 @@ def load_marker_data():
     missing = set(GENE_ORDER) - set(present)
     if missing:
         print(f"  Missing genes (will skip): {missing}")
-    print(f"  Reading {len(present)} marker genes into memory ...")
-    small = adata[:, present].to_memory()
+    extra = [g for g in LILRA4_GENES if g in adata.var_names]
+    load_genes = present + extra
+    print(f"  Reading {len(load_genes)} marker genes into memory ...")
+    small = adata[:, load_genes].to_memory()
     adata.file.close()
     return small, present
 
@@ -248,7 +256,8 @@ if __name__ == "__main__":
     print("=" * 60)
 
     stats_path = os.path.join(OUT_DIR, "dotplot_stats.csv")
-    if os.path.exists(stats_path):
+    lilra4_path = os.path.join(OUT_DIR, "lilra4_stats.csv")
+    if os.path.exists(stats_path) and os.path.exists(lilra4_path):
         print(f"Loading cached stats from {stats_path} ...")
         df = pd.read_csv(stats_path)
         present_genes = [g for g in GENE_ORDER if g in df["gene"].unique()]
@@ -258,6 +267,13 @@ if __name__ == "__main__":
         df = compute_dotplot_stats(adata, present_genes)
         df.to_csv(stats_path, index=False)
         print(f"  Saved  {stats_path}")
+        # LILRA4 / pDC marker row — consumed (concatenated) by SF4B. Same schema,
+        # computed at celltype_level1 like the main panel.
+        if "LILRA4" in adata.var_names:
+            compute_dotplot_stats(adata, LILRA4_GENES).to_csv(lilra4_path, index=False)
+            print(f"  Saved  {lilra4_path}")
+        else:
+            print("  [warn] LILRA4 absent from atlas var_names — lilra4_stats.csv not written")
 
     print("\nRendering dot plot ...")
     plot_dotplot(df, [g for g in GENE_ORDER if g in present_genes], OUT_DIR)

@@ -69,9 +69,12 @@ out_dir   <- path.expand(CFG$paths$output_root)
 fig_dir   <- file.path(out_dir, "figures")
 # Canonical SFE directory (config entry-point objects live here).
 sfe_dir   <- file.path(path.expand(CFG$paths$data_root), CFG$objects$sfe_dir)
+# Regenerated SFEs (downstream re-runs that add colData) are written HERE, under
+# output_root — never into the read-only deposited data_root (audit H5/H15).
+sfe_out_dir <- file.path(out_dir, "sfe")
 
 # Create output directories if needed
-for (d in c(out_dir, fig_dir, sfe_dir,
+for (d in c(out_dir, fig_dir, sfe_out_dir,
             file.path(out_dir, "03_04_qc"),
             file.path(out_dir, "05_probe_qc"),
             file.path(out_dir, "06_annotation"),
@@ -245,16 +248,23 @@ spatial_point_layer <- function(mapping = aes(), ...) {
 
 # --- Utility functions -------------------------------------------------------
 
-# Load an HDF5-backed SFE saved with saveHDF5SummarizedExperiment
+# Load an HDF5-backed SFE. Prefer a regenerated copy under output_root/sfe; fall
+# back to the deposited input under data_root (audit H5: regenerated SFEs live in
+# output_root/sfe so the read-only deposited inputs are never mutated in place).
 load_sfe <- function(name) {
-  sfe_path <- file.path(sfe_dir, name)
-  if (!dir.exists(sfe_path)) stop("SFE directory not found: ", sfe_path)
-  loadHDF5SummarizedExperiment(dir = sfe_path)
+  for (base in c(sfe_out_dir, sfe_dir)) {
+    sfe_path <- file.path(base, name)
+    if (dir.exists(sfe_path)) return(loadHDF5SummarizedExperiment(dir = sfe_path))
+  }
+  stop("SFE directory not found in output_root/sfe or data_root: ", name)
 }
 
-# Save SFE as HDF5-backed, using a _v2 swap for crash safety
+# Save SFE as HDF5-backed under output_root/sfe, using a _v2 swap for crash safety.
+# Writes/unlinks ONLY under output_root — the deposited data_root inputs are never
+# mutated (audit H5/H15).
 save_sfe <- function(sfe, name) {
-  sfe_path     <- file.path(sfe_dir, name)
+  if (!dir.exists(sfe_out_dir)) dir.create(sfe_out_dir, recursive = TRUE)
+  sfe_path     <- file.path(sfe_out_dir, name)
   sfe_path_new <- paste0(sfe_path, "_v2")
   if (dir.exists(sfe_path_new)) unlink(sfe_path_new, recursive = TRUE)
   saveHDF5SummarizedExperiment(sfe, dir = sfe_path_new)

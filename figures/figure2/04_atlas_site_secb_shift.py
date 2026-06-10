@@ -14,7 +14,7 @@ INPUTS
         (produced by figures/_prep/fig_secretory_polarization_00_prepare_data.py)
 
 OUTPUTS
-    - figures_dir/atlas_site_secb_shift.{svg,png}
+    - figures_dir/figure2/atlas_site_secb_shift.{svg,png}
 
 MANUSCRIPT PANEL(S): Fig 2D (left), Fig 2E (right).
 
@@ -43,8 +43,8 @@ from config.config import path, SEED  # noqa: E402
 DATA_DIR = path("data_root", "2026_final_atlas", "output", "fig_secretory_polarization", "data")
 BARS_CSV = os.path.join(DATA_DIR, "panel_b_site_proportions.csv")
 PAIRED_CSV = os.path.join(DATA_DIR, "panel_c_paired_site.csv")
-OUT_SVG = path("figures_dir", "atlas_site_secb_shift.svg")
-OUT_PNG = path("figures_dir", "atlas_site_secb_shift.png")
+OUT_SVG = path("figures_dir", "figure2","atlas_site_secb_shift.svg")
+OUT_PNG = path("figures_dir", "figure2","atlas_site_secb_shift.png")
 
 # ---------- Style ----------
 PALETTE = {"Ciliated": "#E07850", "SecA": "#E6A141",
@@ -98,6 +98,8 @@ def add_bracket(ax, x1, x2, y, h, stars, fontsize=7):
 
 # ---------- Load ----------
 bars = pd.read_csv(BARS_CSV).set_index("metastatic_site")
+# Standardize epitype column label "Transitioning" -> "Intermediate" (deposited cache predates the rename).
+bars = bars.rename(columns={"Transitioning": "Intermediate"})
 paired_long = pd.read_csv(PAIRED_CSV)
 
 n_per_site = paired_long.groupby("metastatic_site")["patient_id"].nunique()

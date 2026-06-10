@@ -1,24 +1,26 @@
 #!/usr/bin/env python3
 """
-SF3A-C — Atlas UMAPs by anatomic site, metastatic site, treatment
-=================================================================
+SF3A-C — Atlas UMAPs by treatment status, anatomic site, metastatic site
+========================================================================
 
 Purpose
     Three categorical UMAP panels of the full atlas coloured by clinical
-    metadata (anatomic site, metastatic site; the treatment panel is coloured
-    by cell type to show coverage). No titles / no panel letters.
+    metadata. Per the published Supplemental Figure 3, panel A is coloured by
+    treatment status, B by anatomic site, C by metastatic site. (Panels D-F of
+    the published figure — TP53 / HRD / BRCA — are produced by the companion
+    script 06_SF3D_atlas_genomic_umaps.py.) No titles / no panel letters.
 
 INPUTS
     obj("atlas_final")  (hgsc_atlas_final.h5ad; obsm['X_umap'];
-        obs: anatomic_site, metastatic_site, treatment_status, celltype_pred)
+        obs: treatment_status, anatomic_site, metastatic_site)
 
 OUTPUTS
+    output_root/figures/supplementary/SF3_treatment_status.{svg,png}
     output_root/figures/supplementary/SF3_anatomic_site.{svg,png}
     output_root/figures/supplementary/SF3_metastatic_site.{svg,png}
-    output_root/figures/supplementary/SF3_treatment_celltype.{svg,png}
 
 MANUSCRIPT PANEL(S)
-    SF3A-C.
+    SF3A (treatment status), SF3B (anatomic site), SF3C (metastatic site).
 
 RUNTIME TIER
     moderate (loads atlas obs + UMAP, subsamples to 800k points).
@@ -78,7 +80,7 @@ print("Loading atlas h5ad (backed)...", flush=True)
 adata = ad.read_h5ad(ATLAS_H5AD, backed="r")
 print(f"  {adata.n_obs:,} cells")
 
-obs = adata.obs[["anatomic_site", "metastatic_site", "treatment_status", "celltype_pred"]].copy()
+obs = adata.obs[["treatment_status", "anatomic_site", "metastatic_site"]].copy()
 umap = adata.obsm["X_umap"]
 obs["UMAP1"] = umap[:, 0]
 obs["UMAP2"] = umap[:, 1]
@@ -104,19 +106,27 @@ ANATOMIC_PALETTE = {
 METASTATIC_PALETTE = {
     "primary": "#E6A141", "metastasis": "#5665B6", "ascites": "#87CEFA", "healthy": "#DDD5CA",
 }
-CELLTYPE_PALETTE = {
-    "Epithelial": "#E6A141", "Fibroblast": "#DDD5CA", "T_cell": "#87CEFA",
-    "NK_cell": "#56AFC4", "B_cell": "#5665B6", "Plasma_cell": "#8A5DAF",
-    "Macrophage": "#8FBC8F", "DC": "#2E8B57", "Neutrophil": "#6B8E23",
-    "Mast": "#8B9B6B", "Endothelial": "#7D4E4E", "Pericyte": "#B87A7A",
-    "Smooth_Muscle": "#D14E6C", "Mesothelial": "#D4A574", "Erythrocyte": "#A0A0A0",
+# Treatment-status palette / labels (published SF3A legend order):
+#   Pre-treatment, Post-chemo, Post-niraparib, NA,
+#   Post-chemo + niraparib, Post-chemo + pembro, Post-chemo + olaparib.
+# Keys match the raw treatment_status categories in atlas_final.obs.
+TREATMENT_PALETTE = {
+    "pre-treatment":               "#56AFC4",
+    "post-chemotherapy":           "#D14E6C",
+    "post-niraparib":              "#E6A141",
+    "NA":                          "#DDD5CA",
+    "post-chemotherapy_niraparib": "#8A5DAF",
+    "post-chemotherapy_pembro":    "#2E8B57",
+    "post-chemotherapy_olaparib":  "#5665B6",
 }
-CELLTYPE_LABELS = {
-    "Epithelial": "Epithelial", "Fibroblast": "Fibroblast", "T_cell": "T cell",
-    "NK_cell": "NK cell", "B_cell": "B cell", "Plasma_cell": "Plasma cell",
-    "Macrophage": "Macrophage", "DC": "Dendritic cell", "Neutrophil": "Neutrophil",
-    "Mast": "Mast cell", "Endothelial": "Endothelial", "Pericyte": "Pericyte",
-    "Smooth_Muscle": "Smooth muscle", "Mesothelial": "Mesothelial", "Erythrocyte": "Erythrocyte",
+TREATMENT_LABELS = {
+    "pre-treatment":               "Pre-treatment",
+    "post-chemotherapy":           "Post-chemo",
+    "post-niraparib":              "Post-niraparib",
+    "NA":                          "NA",
+    "post-chemotherapy_niraparib": "Post-chemo + niraparib",
+    "post-chemotherapy_pembro":    "Post-chemo + pembro",
+    "post-chemotherapy_olaparib":  "Post-chemo + olaparib",
 }
 ANATOMIC_LABELS = {
     "adnexa": "Adnexa", "omentum": "Omentum", "ascites": "Ascites",
@@ -161,16 +171,16 @@ def plot_umap_categorical(df, col, palette, labels, out_stem):
     print(f"  Saved: {out_png}")
 
 
-print("\nPanel 1/3: anatomic site", flush=True)
+print("\nPanel 1/3 (SF3A): treatment status", flush=True)
+plot_umap_categorical(obs, "treatment_status", TREATMENT_PALETTE, TREATMENT_LABELS,
+                      "SF3_treatment_status")
+
+print("Panel 2/3 (SF3B): anatomic site", flush=True)
 plot_umap_categorical(obs, "anatomic_site", ANATOMIC_PALETTE, ANATOMIC_LABELS,
                       "SF3_anatomic_site")
 
-print("Panel 2/3: metastatic site", flush=True)
+print("Panel 3/3 (SF3C): metastatic site", flush=True)
 plot_umap_categorical(obs, "metastatic_site", METASTATIC_PALETTE, METASTATIC_LABELS,
                       "SF3_metastatic_site")
-
-print("Panel 3/3: treatment (coloured by cell type)", flush=True)
-plot_umap_categorical(obs, "celltype_pred", CELLTYPE_PALETTE, CELLTYPE_LABELS,
-                      "SF3_treatment_celltype")
 
 print("\nDone — 3 panels saved.")

@@ -33,9 +33,7 @@ dir.create(OUT_DIR, recursive = TRUE, showWarnings = FALSE)
 dir.create(file.path(OUT_DIR, "figures"), recursive = TRUE,
             showWarnings = FALSE)
 
-WT_SAMPLES <- c("sfe_OTB_2384", "sfe_OTB_2417", "sfe_OTB_2432",
-                "sfe_OTB_2454", "sfe_OTB_2457", "sfe_OTB_2461",
-                "sfe_SP24_24824", "sfe_SP24_25573")
+WT_SAMPLES <- sfe_names_wt
 EPI_LBLS <- c("SecA epithelium", "Intermediate epithelium", "SecB epithelium")
 CHUNK    <- 25000   # PCA-on-polygon chunk size
 
@@ -53,6 +51,8 @@ override_with_06f <- function(sfe, sample_key) {
   hit <- !is.na(m)
   lab <- as.character(sfe$cell_label)
   lab[hit] <- sub$cell_label_06f[m[hit]]
+  # Reconcile legacy SFE / 06f label with refactor naming (idempotent; no-op if absent)
+  lab[lab == "Transitioning epithelium"] <- "Intermediate epithelium"
   sfe$cell_label <- lab
   sfe
 }

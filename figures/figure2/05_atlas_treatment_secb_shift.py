@@ -16,7 +16,7 @@ INPUTS
         (patient_id, treatment_status, Factor_2; produced by the prep helper)
 
 OUTPUTS
-    - figures_dir/atlas_treatment_secb_shift.{svg,png}
+    - figures_dir/figure2/atlas_treatment_secb_shift.{svg,png}
 
 MANUSCRIPT PANEL(S): Fig 2F (left), Fig 2G (right).
 
@@ -44,8 +44,8 @@ from config.config import path, SEED  # noqa: E402
 # ---------- Paths ----------
 BARS_CSV = path("data_root", "202605_epitype_manuscript", "20260411_figures", "data_fig1i_treatment_proportions.csv")
 META_PATH = path("data_root", "2026_final_atlas", "output", "fig_secretory_polarization", "data", "meta.parquet")
-OUT_SVG = path("figures_dir", "atlas_treatment_secb_shift.svg")
-OUT_PNG = path("figures_dir", "atlas_treatment_secb_shift.png")
+OUT_SVG = path("figures_dir", "figure2","atlas_treatment_secb_shift.svg")
+OUT_PNG = path("figures_dir", "figure2","atlas_treatment_secb_shift.png")
 
 MIN_CELLS_PAIRED = 100
 
@@ -101,6 +101,8 @@ def add_bracket(ax, x1, x2, y, h, stars, fontsize=7):
 
 # ---------- Load ----------
 bars = pd.read_csv(BARS_CSV).set_index("treatment_status")
+# Standardize epitype column label "Transitioning" -> "Intermediate" (deposited cache predates the rename).
+bars = bars.rename(columns={"Transitioning": "Intermediate"})
 meta = pd.read_parquet(META_PATH, columns=["patient_id", "treatment_status", "Factor_2"])
 meta = meta[meta["treatment_status"].isin(["pre-treatment", "post-chemotherapy"])]
 counts = meta.groupby(["patient_id", "treatment_status"], observed=True).size()

@@ -19,7 +19,7 @@ cran_pkgs <- c(
   "ggplot2", "patchwork", "cowplot", "ggrepel", "scales", "RColorBrewer", "viridis",
   "Matrix",
   "mgcv",                                       # GAMs (Fig 4G/5A/5G/6B/6G/6H, SF12-14)
-  "survival", "survminer",                      # Cox + Kaplan-Meier (Fig 7)
+  "survival", "survminer", "survRM2",           # Cox + Kaplan-Meier (Fig 7); survRM2 = RMST (spatial/09/02_robustness.R)
   "spdep", "spatstat", "sf", "dbscan", "RANN",  # spatial: Lee's L/BiLISA, frNN, nn2, morphometry
   "cluster",                                    # silhouette (k selection)
   "pheatmap", "circlize"                        # heatmaps; ComplexHeatmap below
@@ -39,7 +39,8 @@ bioc_pkgs <- c(
 github_pkgs <- c(
   "navinlabcode/copykat",                        # CNV (Fig 1J, SF4C, SF7)
   "Danko-Lab/BayesPrism/BayesPrism",             # bulk deconvolution (Fig 7 epithelial fraction)
-  "dmcable/spacexr"                              # RCTD/SPLIT (06g_clean_split)
+  "dmcable/spacexr",                             # RCTD (06g_clean_split)
+  "bdsc-tds/SPLIT"                               # SPLIT post-RCTD purification (spatial/03/05_clean_split_rctd.R); slug per that script's header + install message
 )
 
 install.packages(cran_pkgs)
@@ -48,5 +49,6 @@ for (p in github_pkgs) try(remotes::install_github(p, upgrade = "never"), silent
 
 cat("\n--- verification ---\n")
 need <- c("SpatialFeatureExperiment","Voyager","SingleR","UCell","mgcv","spdep","spatstat",
-          "survival","sf","dbscan","RANN","arrow","ConsensusOV","copykat","BayesPrism","spacexr")
+          "survival","survRM2","sf","dbscan","RANN","arrow","ConsensusOV","copykat","BayesPrism",
+          "spacexr","SPLIT")
 for (p in need) cat(sprintf("%-28s %s\n", p, requireNamespace(p, quietly = TRUE)))

@@ -44,25 +44,36 @@ pre-integration cut at 0.30 (here) and a stricter post-integration cut at 0.25
 
 ### Integration (CellAssign → scVI → scANVI)
 
-Integration was performed once on a GPU cluster; the full integration code is
-included in the repository (`atlas/01_preprocess_qc/03_preprocess_hvg.py` … `07_finalize.py`).
-Re-running it is computationally expensive and not required to reproduce downstream
+Integration was performed once on a GPU cluster. The full integration code is
+included in the repository (`atlas/01_preprocess_qc/03_preprocess_hvg.py` …
+`07_finalize.py`); these scripts are the **authoritative original cluster scripts**
+(only the file paths were centralised through `config/`), and the hyperparameters
+quoted below are read directly from them rather than inferred. Re-running the
+integration is computationally expensive and is not required to reproduce downstream
 results — the integrated atlas object is deposited as an entry object — but the step
-is included so it can be independently re-executed. For integration, 4,000 highly variable genes were
-selected per batch using the Seurat v3 variance-stabilizing transform
-(scanpy v1.11.4, `flavor="seurat_v3"`, `batch_key="sample_id"`). Initial cell-type
-priors were generated with CellAssign using a curated marker matrix of 81 genes
-across 16 cell types. An scVI model (negative-binomial likelihood,
-`n_layers = 2`) was trained, followed by scANVI semi-supervised integration that
-used the CellAssign predictions as label priors (`batch_key="sample_id"`,
-`unlabeled_category="Unknown"`); both models were trained for up to 800 epochs
-with early stopping (`patience = 10`, `monitor="elbo_validation"`) on an NVIDIA
-V100 GPU (CUDA 12.6.2). The resulting 10-dimensional scANVI latent
-representation (`X_scanvi`) was used for all downstream analyses. A
-post-integration doublet filter removed cells with Scrublet scores ≥ 0.25,
-leaving 2,294,893 cells. UMAP embeddings were computed on the scANVI latent
-space (`scanpy.pp.neighbors`, `use_rep="X_scanvi"`, `n_neighbors = 10`;
-`min_dist = 0.2`).
+is included so it can be independently re-executed. For integration, 4,000 highly
+variable genes were selected per batch using the Seurat v3 variance-stabilizing
+transform (scanpy v1.11.4, `flavor="seurat_v3"`, `batch_key="sample_id"`). Initial
+cell-type priors were generated with CellAssign using a curated marker matrix of 81
+genes across 16 cell types. An scVI model (`gene_likelihood="nb"` negative-binomial
+likelihood, `n_latent = 10`, `n_layers = 2`, `max_epochs = 400`) was trained,
+followed by scANVI semi-supervised integration that used the CellAssign predictions
+as label priors (`batch_key="sample_id"`, `unlabeled_category="Unknown"`,
+`max_epochs = 800`); both models used early stopping (`patience = 10`,
+`monitor="elbo_validation"`) on an NVIDIA V100 GPU (CUDA 12.6.2). The resulting
+10-dimensional scANVI latent representation (`X_scanvi`) was used for all downstream
+analyses. A post-integration doublet filter removed cells with Scrublet scores
+≥ 0.25, leaving 2,294,893 cells. UMAP embeddings were computed on the scANVI latent
+space (`07_finalize.py`: `scanpy.pp.neighbors(use_rep="X_scanvi")` with the scanpy
+default `n_neighbors = 15`, then `scanpy.tl.umap(min_dist = 0.3)`). **[NOTE: the
+2026-04-27 manuscript draft / local `methods_draft.md` cite `n_neighbors = 10` and
+`min_dist = 0.2` for the UMAP, whereas the deposited finalize script
+(`07_finalize.py`) uses the scanpy-default `n_neighbors = 15` and `min_dist = 0.3`.
+The deposited atlas object (`hgsc_atlas_scanvi.h5ad`) is the trust boundary and was
+not re-embedded, so the embedding shown in the figures is the one stored on that
+object; the small UMAP-parameter discrepancy between draft and finalize script does
+not affect the latent representation or any downstream analysis and is flagged for
+the original analyst to reconcile in the manuscript Methods.]**
 
 ## Cell-type annotation
 
@@ -112,16 +123,21 @@ maximum). To classify genes along the polarization axis, the 90th percentile of
 each factor's loading distribution was used as a threshold, yielding 177
 SecA-specific, 177 SecB-specific and 124 shared genes.
 
-To assess metaprogram stability, consensus NMF was additionally performed
-following Gavish et al.: per-patient NMF was run across k = 5–10 with 30 random
-initializations per k; consensus programs were identified by hierarchical
-clustering (average linkage, cosine-similarity threshold 0.5) and metaprograms
-defined by clustering all patient consensus programs (cosine-similarity
-threshold 0.3; minimum 5 programs from ≥ 3 patients). Two metaprograms were
-recovered (a general-secretory program and a small metallothionein program);
-critically, SecA and SecB did **not** separate into distinct metaprograms,
-confirming that secretory polarization represents a continuous gradient rather
-than discrete cell states.
+**[NOTE — consensus-NMF / metaprogram analysis removed.** Earlier drafts of this
+document described an additional Gavish-style consensus-NMF metaprogram-stability
+analysis (per-patient NMF across k = 5–10 with 30 random initializations,
+cosine-similarity consensus clustering, two recovered metaprograms). That analysis
+is **not part of the manuscript**: it is not shown in any main or supplementary
+figure or table (Supp Fig 5/6 and Supp Data 4 derive from the single k = 10 NMF
+above), and **no supporting code exists** in this repository (no per-patient k = 5–10
+sweep or consensus-clustering step is implemented; `atlas/03_epithelial_nmf/`
+performs only the single k = 10 `sklearn` NMF). It is therefore omitted here to keep
+the Methods faithful to the deposited code and figures. The conclusion that
+secretory polarization is a **continuous gradient rather than discrete cell states**
+is instead supported by results that are shown: the tertile partition along the
+Factor-2 polarization axis (Fig 1I) and the spatial polarization gradients (Fig 4).
+The corresponding manuscript-text passage is flagged for removal in
+`_repro_refactor/reports/MANUSCRIPT_CORRECTIONS.md` (item 6).]**
 
 Epithelial cells were partitioned along the polarization axis using percentile
 cut-offs computed on **Factor 2 usage among non-ciliated epithelial cells**:
@@ -193,7 +209,7 @@ Independence of epithelial state from clonal identity was tested with chi-square
 or Fisher's exact tests with BH-FDR correction, supplemented by multinomial
 logistic regression (5-fold cross-validated AUROC). Within-clone coexistence of
 epithelial states was quantified by Shannon entropy. Across 248 samples with
-sufficient cells (3,735 clones), 140 (58%) were monoclonal, 54 (22%) clonally
+sufficient cells (375 clones), 140 (58%) were monoclonal, 54 (22%) clonally
 driven and 54 (22%) mixed; all three secretory states co-existed within
 individual clones.
 
@@ -542,7 +558,7 @@ publication.
    re-runnable cohort as post-preprint additions, so 13 enter clustering/
    polarization panels. Confirm legends are updated consistently.
 4. **CopyKAT sample n** — 251 samples had CopyKAT run; 248 had sufficient cells
-   for within-clone epitype analysis (3,735 clones). Both numbers are correct in
+   for within-clone epitype analysis (375 clones). Both numbers are correct in
    context; ensure figures cite the right one.
 5. **Deconvolution method in TCGA multivariate model** — both BayesPrism and
    CIBERSORTx scores appear in `spatial/09_external_validation/01_tcga_external_validation.R`;
@@ -552,11 +568,24 @@ publication.
    Fig 7E/F legend/panel says n = 106 (low = 104). The KM figure binning differs
    from the tertile description in the original Methods; the tertile procedure is
    described above, but the figure bins should be reconciled with the reported n.
-7. **Could not fully determine from code (flag for author):**
+7. **Integration hyperparameters** — the scVI/scANVI integration scripts
+   (`atlas/01_preprocess_qc/03_preprocess_hvg.py` … `07_finalize.py`) are the
+   authoritative original cluster scripts and carry their actual hyperparameters as
+   hardcoded constants (`05a`: `n_latent = 10`, `n_layers = 2`,
+   `gene_likelihood="nb"`, `max_epochs = 400`, `early_stopping_patience = 10`;
+   `05b`: `max_epochs = 800`, `monitor="elbo_validation"`; `07_finalize`:
+   `UMAP_MIN_DIST = 0.3`, `LEIDEN_RESOLUTION = 0.2`, scanpy-default `n_neighbors`).
+   These values were quoted in the Integration section directly from the code, not
+   inferred from defaults or from the draft, and there are no "CONFIRM"
+   placeholders in the scripts. The only integration item still to confirm with the
+   original analyst is the UMAP neighbour graph: the draft / `methods_draft.md` cite
+   `n_neighbors = 10` and `min_dist = 0.2`, whereas `07_finalize.py` uses the
+   scanpy-default `n_neighbors = 15` and `min_dist = 0.3` (flagged inline in the
+   Integration section). Because the deposited atlas object is the trust boundary
+   and was not re-embedded, this does not affect the latent space or any downstream
+   result.
+8. **Could not fully determine from code (flag for author):**
    (a) exact `n_perms` value passed to LIANA at production runtime (it is a CLI
-   argument; the draft cites `n_perms = 100`); (b) some scVI/scANVI integration
-   hyperparameters in `atlas/01_preprocess_qc/03_preprocess_hvg.py` … `07_finalize.py` are
-   taken from the draft text / scvi-tools defaults (marked CONFIRM in that script)
-   because the original cluster script was not in the working copy; (c) precise scFEA
+   argument; the draft cites `n_perms = 100`); (b) precise scFEA
    epochs/learning-rate (epochs = 100, lr = 0.008) are from the draft, run in a
    vendored sub-environment not in the main `environment.yml`.

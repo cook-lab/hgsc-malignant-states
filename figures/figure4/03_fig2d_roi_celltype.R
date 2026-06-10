@@ -11,8 +11,8 @@
 #   - ref_palette / load_sfe from spatial/00_setup/00_setup.R
 #
 # OUTPUTS:
-#   - figures_dir/fig2d_ROI_C_wide_celltype.{svg,png}
-#   - figures_dir/fig2d_ROI_C_wide_macrophage.{svg,png}
+#   - figures_dir/figure4/fig2d_ROI_C_wide_celltype.{svg,png}
+#   - figures_dir/figure4/fig2d_ROI_C_wide_macrophage.{svg,png}
 #
 # MANUSCRIPT PANEL(S): Fig 4D.
 #
@@ -36,7 +36,7 @@ if (!file.exists(.setup_path)) .setup_path <- "spatial/00_setup/00_setup.R"
 source(.setup_path)
 library(Voyager)
 
-fig_dir <- path.expand(CFG$paths$figures_dir)
+fig_dir <- cfg_path("figures_dir", "figure4")
 if (!dir.exists(fig_dir)) dir.create(fig_dir, recursive = TRUE)
 
 epi_types <- c("SecA epithelium", "Intermediate epithelium", "SecB epithelium")
@@ -48,6 +48,12 @@ spatial_point_layer <- function(mapping = aes(), ...) {
 
 cat("=== Fig 4D ===\n")
 sfe <- load_sfe("sfe_OTB_2384")
+# Rename-mismatch fix (idempotent): deposited SFE still carries the legacy
+# "Transitioning epithelium"; standardize to "Intermediate epithelium" on the
+# SAME cell_label vector the colour/filter below keys on (lines ~59, ~73).
+.lab <- as.character(sfe$cell_label)
+.lab[.lab == "Transitioning epithelium"] <- "Intermediate epithelium"
+sfe$cell_label <- .lab
 bb_2d <- c(xmin = 2800, xmax = 4000, ymin = -7800, ymax = -6600)
 coords <- spatialCoords(sfe)
 in_roi <- coords[, 1] >= bb_2d["xmin"] & coords[, 1] <= bb_2d["xmax"] &

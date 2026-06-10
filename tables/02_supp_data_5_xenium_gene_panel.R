@@ -36,8 +36,8 @@ source(file.path(.script_dir, "..", "config", "config.R"))
 library(data.table)
 
 # ---- Inputs (config-resolved) ----------------------------------------------
-qc_decisions <- fread(cfg_path("output_root", "05_probe_qc", "gene_exclusion_decisions.csv"))
-qc_full      <- fread(cfg_path("output_root", "05_probe_qc", "probe_qc_full.csv"))
+qc_decisions <- fread(cfg_path("data_root", "2026_final_xenium_analysis", "output", "05_probe_qc", "gene_exclusion_decisions.csv"))
+qc_full      <- fread(cfg_path("data_root", "2026_final_xenium_analysis", "output", "05_probe_qc", "probe_qc_full.csv"))
 
 # ---- Build panel table ------------------------------------------------------
 # Drop overlapping QC columns from decisions (keep from qc_full for metrics)

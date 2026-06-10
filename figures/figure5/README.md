@@ -16,10 +16,12 @@ Ciliated** (was "Transitioning"). SecA/SecB 7-gene signatures live in
 | 03 | `03_morphometrics_paired.py` | 5D, 5E | 33_morphometrics `per_sample_summary_wt.csv` / `per_patient_summary_tma.csv` (+ counts) → `xenium_{nuc_area,nuc_perimeter,nc_ratio}_paired.{png,svg}` |
 | 04 | `04_atlas_seca_secb_autocrine_shift.py` | 5F | atlas 17 `17b_liana_global.csv` → `atlas_seca_secb_autocrine_shift.{png,svg}` |
 | 05 | `05_gam_epithelial_genes_polarization.R` | 5G | 19d `epithelial_expression_polarization.rds` → `gam_epithelial_genes_polarization.{pdf,png,svg}` |
-| 06 | `06_roi_SP24_24824_zoom_genes.R` | 5I (see note) | `sfe_SP24_24824` + 06f override → `ROI_figure_5/SP24_24824_roi_<gene>_zoom.{svg,png}` |
+| 06 | `06_roi_SP24_24824_zoom_genes.R` | 5H, 5I | `sfe_SP24_24824` + 06f override → `ROI_figure_5/SP24_24824_roi_celltype_full.{svg,png}` (5H) + `SP24_24824_roi_<gene>.{svg,png}` (5I, full ROI: CTNNB1/ITGB5/MMP7/ICAM1) |
 
 Notes:
-- 5F LIANA autocrine is flagged "under investigation" (see `docs/REPRODUCIBILITY.md`).
-- 06: LINEAGE attributes the Fig 5H cell-type map to "the same zoom_genes script",
-  but the canonical source file only renders the gene panels (5I). The 5H cell-type
-  panel is not present in this generator; it was NOT invented here.
+- 5F: the generator reproduces the panel exactly, but thresholds on expression
+  magnitude (`lrscore > 0.5`), not significance — see `docs/REPRODUCIBILITY.md` (Fig 5F).
+- 06 renders both panels over the published full ROI (x=[7800,9000], y=[-7100,-5900]):
+  the cell-type map (5H, `SP24_24824_roi_celltype_full.*`) and the 4-gene expression
+  maps (5I, CTNNB1/ITGB5/MMP7/ICAM1). The published 5H/5I overlay two ROI rectangles
+  in Illustrator (an assembly-time annotation, not rendered here).

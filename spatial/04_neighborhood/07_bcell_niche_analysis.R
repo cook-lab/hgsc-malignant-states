@@ -43,14 +43,17 @@ message(sprintf("Loaded %s neighborhood assignments",
 
 # --- SFE names ---------------------------------------------------------------
 
-sfe_names <- c("sfe_tma_filtered", "sfe_OTB_2384", "sfe_OTB_2417", "sfe_OTB_2432",
-               "sfe_OTB_2454", "sfe_OTB_2457", "sfe_OTB_2461",
-               "sfe_SP24_24824", "sfe_SP24_25573")
+sfe_names <- c("sfe_tma_filtered", sfe_names_wt)
 
 # --- Niche definitions -------------------------------------------------------
 
-niche_a <- "Immune niche"                # nb_2 — dedicated immune neighborhood
-niche_b <- "SecB-enriched epithelium"    # nb_6 — SecB end of trajectory, immune cells in tumor context
+# Canonical niche names from 00_setup `nb_names` (identities verified against
+# output/09_neighborhood/neighborhood_composition.csv). These previously read
+# "Immune niche" / "SecB-enriched epithelium", which match NO entry in the
+# canonical map, so the niche filter below selected ZERO cells (audit B1).
+niche_a <- "Immune-rich niche"             # nb_4 — dedicated immune/macrophage neighborhood
+niche_b <- "Intermediate-SecB epithelium"  # nb_5 — SecB-rich epithelial niche (immune cells in tumour context)
+stopifnot(all(c(niche_a, niche_b) %in% nb_names))  # fail loudly on future name drift
 
 # --- B cell functional state gene sets (curated for Xenium 541-gene panel) ---
 

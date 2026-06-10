@@ -148,9 +148,7 @@ metabolic_sets <- list(
 
 # --- SFE names --------------------------------------------------------------
 
-sfe_names <- c("sfe_tma", "sfe_OTB_2384", "sfe_OTB_2417", "sfe_OTB_2432",
-               "sfe_OTB_2454", "sfe_OTB_2457", "sfe_OTB_2461",
-               "sfe_SP24_24824", "sfe_SP24_25573")
+sfe_names <- c("sfe_tma_filtered", sfe_names_wt)
 
 # --- Load neighborhood assignments ------------------------------------------
 
@@ -187,6 +185,10 @@ for (sname in sfe_names) {
 
   cd <- as.data.frame(colData(sfe))
   cd$cell_id <- colnames(sfe)
+  # Rename-mismatch fix (idempotent): deposited SFEs still carry the legacy
+  # epithelial label. Harmless if absent; keeps composition output/labels
+  # consistent with the canonical "Intermediate epithelium" naming.
+  cd$cell_label[cd$cell_label == "Transitioning epithelium"] <- "Intermediate epithelium"
 
   # Join neighborhood
   nb_match <- nb_assign[match(cd$cell_id, nb_assign$cell_id), ]

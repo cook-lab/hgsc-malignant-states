@@ -39,7 +39,7 @@ from config.config import path, SEED  # noqa: E402
 np.random.seed(SEED)
 
 # ---------- Paths (central config) ----------
-META_PQ = path("output_root", "figures", "data_fig1", "meta.parquet")
+META_PQ = path("data_root", "202605_epitype_manuscript", "final_publication_figures", "data_fig1", "meta.parquet")
 OUT_PNG = path("output_root", "figures", "supplementary", "SF2A_atlas_study_umap.png")
 OUT_SVG = path("output_root", "figures", "supplementary", "SF2A_atlas_study_umap.svg")
 

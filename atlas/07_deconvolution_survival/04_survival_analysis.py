@@ -120,9 +120,11 @@ def fig_to_base64(fig):
 def plot_km(df, time_col, event_col, group_col, title, ax, colors=None):
     kmf = KaplanMeierFitter()
     groups = sorted(df[group_col].unique())
+    # colors is a {group_label: color} dict so the palette stays bound to the
+    # semantic label (SecA/SecB) rather than the alphabetical sort position.
     for i, group in enumerate(groups):
         mask = df[group_col] == group
-        color = colors[i] if colors else None
+        color = colors.get(group) if colors else None
         kmf.fit(df.loc[mask, time_col], df.loc[mask, event_col],
                 label=f"{group} (n={mask.sum()})")
         kmf.plot_survival_function(ax=ax, ci_show=True, color=color, lw=1.5)
@@ -155,12 +157,19 @@ def clip_survival(df, time_col, event_col, max_months):
 def run_km_suite(df, time_col, event_col, group_cols, secB_col,
                  prefix, label_prefix, print_prefix=""):
     results = []
+    # Colors keyed by group label (matches the pd.cut() labels) so blue/orange
+    # track SecA-low/SecB-high semantics regardless of alphabetical sort order.
     analyses = [
-        ("secB_group_median", "SecB Median Split", ["#0072B2", "#D55E00"]),
-        ("secB_group_tertile", "SecB Tertiles", ["#0072B2", "#999999", "#D55E00"]),
-        ("ratio_group", "SecB/SecA Ratio", ["#0072B2", "#D55E00"]),
-        ("ratio_ab_group", "SecA/SecB Ratio", ["#0072B2", "#D55E00"]),
-        ("secA_prop_group", "SecA Epithelial Proportion", ["#0072B2", "#D55E00"]),
+        ("secB_group_median", "SecB Median Split",
+         {"SecB-low": "#0072B2", "SecB-high": "#D55E00"}),
+        ("secB_group_tertile", "SecB Tertiles",
+         {"SecB-low": "#0072B2", "SecB-mid": "#999999", "SecB-high": "#D55E00"}),
+        ("ratio_group", "SecB/SecA Ratio",
+         {"SecA-dominant": "#0072B2", "SecB-dominant": "#D55E00"}),
+        ("ratio_ab_group", "SecA/SecB Ratio",
+         {"Low SecA:SecB": "#0072B2", "High SecA:SecB": "#D55E00"}),
+        ("secA_prop_group", "SecA Epithelial Proportion",
+         {"Low SecA prop": "#0072B2", "High SecA prop": "#D55E00"}),
     ]
     ep_label = "Overall Survival" if "os" in time_col else "Progression-Free Survival"
     ep_short = "OS" if "os" in time_col else "PFS"
@@ -223,7 +232,11 @@ def run_cox_suite(df, time_col, event_col, secA_col, secB_col,
             print(f"{print_prefix}      {var_name}: Cox failed -- {e}")
 
     mv_vars = [secB_col]
-    covar_map = {"stage_coded": "Stage", "age": "Age", "platinum_coded": "Platinum_sensitivity"}
+    # Multivariate adjustment matches the manuscript model (epithelial fraction +
+    # stage + age). Platinum sensitivity is intentionally NOT a covariate here
+    # (author-approved; see manuscript-corrections). Platinum is still loaded and
+    # used for subgroup analyses elsewhere.
+    covar_map = {"stage_coded": "Stage", "age": "Age"}
     for var in covar_map:
         if var in df_cox.columns:
             mv_vars.append(var)

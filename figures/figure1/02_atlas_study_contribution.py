@@ -17,7 +17,7 @@ INPUTS
     - fig_data_fig1/panel_g_composition_by_study.csv
 
 OUTPUTS
-    - figures_dir/atlas_study_contribution_with_epi_composition.{svg,png}
+    - figures_dir/figure1/atlas_study_contribution_with_epi_composition.{svg,png}
 
 MANUSCRIPT PANEL(S): Fig 1B, 1C, 1D, 1E, 1I.
 
@@ -50,8 +50,8 @@ CELLS_CSV = path("data_root", "202605_epitype_manuscript", "final_publication_fi
 PATIENTS_CSV = path("data_root", "202605_epitype_manuscript", "final_publication_figures", "data_fig1", "panel_b_patients_per_study.csv")
 COMP_CSV = path("data_root", "202605_epitype_manuscript", "final_publication_figures", "data_fig1", "panel_g_composition_by_study.csv")
 
-OUT_SVG = path("figures_dir", "atlas_study_contribution_with_epi_composition.svg")
-OUT_PNG = path("figures_dir", "atlas_study_contribution_with_epi_composition.png")
+OUT_SVG = path("figures_dir", "figure1", "atlas_study_contribution_with_epi_composition.svg")
+OUT_PNG = path("figures_dir", "figure1", "atlas_study_contribution_with_epi_composition.png")
 
 for p in (SCHEMA_PQ, STUDY_META, CELLS_CSV, PATIENTS_CSV, COMP_CSV):
     assert os.path.exists(p), f"missing input: {p}"

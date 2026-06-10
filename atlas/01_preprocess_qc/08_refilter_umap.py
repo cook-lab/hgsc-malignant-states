@@ -49,10 +49,15 @@ np.random.seed(SEED)
 # PATHS (resolved via central config)
 # ============================================================================
 
-INPUT_H5AD = path(
+# Prefer the freshly finalized integration output (07_finalize writes here); fall
+# back to the deposited integrated object if a clean re-run has not produced it yet
+# (audit H18 — the 07->08 chain is only continuous once 07 has run locally).
+_RECOMPUTED = path("output_root", "01_preprocess_qc", "integration", "anndata", "integrated_scanvi.h5ad")
+_DEPOSITED = path(
     "data_root", "2026_final_atlas", "pre-processing and integration",
     "20260213_integration", "output", "anndata", "integrated_scanvi.h5ad",
 )
+INPUT_H5AD = _RECOMPUTED if os.path.exists(_RECOMPUTED) else _DEPOSITED
 OUTPUT_H5AD = obj("atlas_scanvi")
 FIG_DIR     = path("output_root", "01_preprocess_qc", "08_refilter")
 os.makedirs(FIG_DIR, exist_ok=True)

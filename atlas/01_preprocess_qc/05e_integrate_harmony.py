@@ -29,7 +29,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from config.config import path  # noqa: E402
+from config.config import path, SEED  # noqa: E402
 
 # =========================
 # CONFIG
@@ -47,6 +47,9 @@ import numpy as np
 import pandas as pd
 import json
 import os
+
+np.random.seed(SEED)  # seed numpy RNG (harmonypy run_harmony k-means init) — best-effort
+# (deposited integrated object is the trust boundary; see docs/REPRODUCIBILITY.md)
 from datetime import datetime
 import matplotlib
 matplotlib.use("Agg")

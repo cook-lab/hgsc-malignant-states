@@ -13,7 +13,7 @@ INPUTS
       (columns: cell_label, regime_sig, pct, total)
 
 OUTPUTS
-    - figures_dir/bilisa_regime_by_label.{png,svg}
+    - figures_dir/figure4/bilisa_regime_by_label.{png,svg}
 
 MANUSCRIPT PANEL(S): Fig 4F.
 
@@ -37,9 +37,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from config.config import path  # noqa: E402
 
 # ---------- Paths ----------
-CROSSTAB = path("output_root", "44_spatial_autocorrelation", "bilisa_vs_label_crosstab.csv")
-OUT_PNG = path("figures_dir", "bilisa_regime_by_label.png")
-OUT_SVG = path("figures_dir", "bilisa_regime_by_label.svg")
+CROSSTAB = path("data_root", "2026_final_xenium_analysis", "output", "44_spatial_autocorrelation", "bilisa_vs_label_crosstab.csv")
+OUT_PNG = path("figures_dir", "figure4", "bilisa_regime_by_label.png")
+OUT_SVG = path("figures_dir", "figure4", "bilisa_regime_by_label.svg")
 
 # ---------- Style ----------
 FA, FK, FN = 6, 5.5, 5
@@ -69,6 +69,7 @@ CELL_LABELS = {"SecA epithelium": "SecA", "Intermediate epithelium": "Intermedia
 
 # ---------- Load ----------
 ct = pd.read_csv(CROSSTAB)
+ct["cell_label"] = ct["cell_label"].replace({"Transitioning epithelium": "Intermediate epithelium"})
 piv = ct.pivot(index="cell_label", columns="regime_sig", values="pct").fillna(0)
 piv = piv.reindex(index=CELL_ORDER, columns=REGIME_ORDER).fillna(0)
 

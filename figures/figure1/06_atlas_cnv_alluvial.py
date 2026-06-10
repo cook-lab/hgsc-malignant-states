@@ -14,7 +14,7 @@ INPUTS
         (columns: sample_id, n_cells, n_secA, n_transitioning, n_secB)
 
 OUTPUTS
-    - figures_dir/atlas_cnv_alluvial.{svg,png}
+    - figures_dir/figure1/atlas_cnv_alluvial.{svg,png}
 
 MANUSCRIPT PANEL(S): Fig 1J.
 
@@ -43,8 +43,8 @@ from config.config import path  # noqa: E402
 
 # ---------- Paths ----------
 COEX_CSV = path("data_root", "2026_final_atlas", "output", "19_cnv", "tables", "within_clone_coexistence.csv")
-OUT_SVG = path("figures_dir", "atlas_cnv_alluvial.svg")
-OUT_PNG = path("figures_dir", "atlas_cnv_alluvial.png")
+OUT_SVG = path("figures_dir", "figure1", "atlas_cnv_alluvial.svg")
+OUT_PNG = path("figures_dir", "figure1", "atlas_cnv_alluvial.png")
 
 assert os.path.exists(COEX_CSV), f"Missing: {COEX_CSV}"
 

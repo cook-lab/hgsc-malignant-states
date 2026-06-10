@@ -13,9 +13,9 @@ INPUTS
         (rows indexed by epitype: SecA / Intermediate / SecB / Ciliated)
 
 OUTPUTS
-    - figures_dir/atlas_radar_characterization.{svg,png}              (2x2)
-    - figures_dir/atlas_radar_characterization_1x4.{svg,png}          (1x4)
-    - figures_dir/atlas_radar_characterization_{progeny,hallmark,dorothea,flux}.svg
+    - figures_dir/figure2/atlas_radar_characterization.{svg,png}              (2x2)
+    - figures_dir/figure2/atlas_radar_characterization_1x4.{svg,png}          (1x4)
+    - figures_dir/figure2/atlas_radar_characterization_{progeny,hallmark,dorothea,flux}.svg
 
 MANUSCRIPT PANEL(S): Fig 2A.
 
@@ -133,8 +133,8 @@ for spec, df_z in [(gs[0, 0], prog_z), (gs[0, 1], hall_z), (gs[1, 0], doro_z), (
 handles = [Line2D([0], [0], color=PALETTE[g], linewidth=1.5, label=DISPLAY[g]) for g in GROUPS]
 fig.legend(handles=handles, loc="lower center", ncol=2, frameon=False, fontsize=FN,
            bbox_to_anchor=(0.5, 0.01))
-fig.savefig(path("figures_dir", f"{OUT_STEM}.svg"), format="svg")
-fig.savefig(path("figures_dir", f"{OUT_STEM}.png"), format="png")
+fig.savefig(path("figures_dir", "figure2", f"{OUT_STEM}.svg"), format="svg")
+fig.savefig(path("figures_dir", "figure2", f"{OUT_STEM}.png"), format="png")
 plt.close(fig)
 
 # ---------- 1x4 ----------
@@ -146,8 +146,8 @@ for spec, df_z in [(gs_h[0, 0], prog_z), (gs_h[0, 1], hall_z), (gs_h[0, 2], doro
     radar_plot(fig_h.add_subplot(spec, polar=True), df_z, label_fontsize=FL)
 fig_h.legend(handles=handles, loc="lower center", ncol=2, frameon=False, fontsize=FL,
              bbox_to_anchor=(0.5, 0.01))
-fig_h.savefig(path("figures_dir", f"{OUT_STEM}_1x4.svg"), format="svg")
-fig_h.savefig(path("figures_dir", f"{OUT_STEM}_1x4.png"), format="png")
+fig_h.savefig(path("figures_dir", "figure2", f"{OUT_STEM}_1x4.svg"), format="svg")
+fig_h.savefig(path("figures_dir", "figure2", f"{OUT_STEM}_1x4.png"), format="png")
 plt.close(fig_h)
 
 # ---------- Individual ----------
@@ -158,7 +158,7 @@ for df_z, stem in [(prog_z, f"{OUT_STEM}_progeny"), (hall_z, f"{OUT_STEM}_hallma
     ax.legend(handles=handles, loc="upper right", bbox_to_anchor=(1.35, 1.1),
               frameon=False, fontsize=FN)
     fig.tight_layout()
-    fig.savefig(path("figures_dir", f"{stem}.svg"), format="svg")
+    fig.savefig(path("figures_dir", "figure2", f"{stem}.svg"), format="svg")
     plt.close(fig)
 
 print("Done.")

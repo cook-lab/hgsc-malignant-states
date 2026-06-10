@@ -13,7 +13,7 @@
 #     objects. Override ORGANOIDS_ROOT to point at the 2026_organoids tree.
 #
 # OUTPUTS:
-#   - figures_dir/organoids_models_umap.{png,svg}
+#   - figures_dir/figure3/organoids_models_umap.{png,svg}
 #
 # MANUSCRIPT PANEL(S): Fig 3A.
 #
@@ -35,9 +35,9 @@ suppressPackageStartupMessages({
 set.seed(CFG$seed)
 
 # --- Paths -------------------------------------------------------------------
-INPUT   <- file.path(cfg_obj("organoids_root"),
-                     "output/01_Data_Processing_and_QC/seurat_untreated_baseline.rds")
-FIGDIR  <- file.path(path.expand(CFG$paths$figures_dir))
+INPUT   <- cfg_path("organoids_root",
+                    "output/01_Data_Processing_and_QC/seurat_untreated_baseline.rds")
+FIGDIR  <- cfg_path("figures_dir", "figure3")
 if (!dir.exists(FIGDIR)) dir.create(FIGDIR, recursive = TRUE)
 OUT_PNG <- file.path(FIGDIR, "organoids_models_umap.png")
 OUT_SVG <- sub("\\.png$", ".svg", OUT_PNG)

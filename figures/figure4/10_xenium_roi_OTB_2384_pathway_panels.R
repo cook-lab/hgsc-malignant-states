@@ -14,7 +14,7 @@
 #   - load_sfe from spatial/00_setup/00_setup.R
 #
 # OUTPUTS:
-#   - figures_dir/xenium_roi_OTB_2384_{matrix_remodeling,hypoxia,oxidative_stress}.{png,svg}
+#   - figures_dir/figure4/xenium_roi_OTB_2384_{matrix_remodeling,hypoxia,oxidative_stress}.{png,svg}
 #
 # MANUSCRIPT PANEL(S): Fig 4K (hypoxia).
 #
@@ -34,7 +34,7 @@ suppressPackageStartupMessages({
   library(data.table); library(ggplot2); library(sf); library(scales); library(grid)
 })
 
-fig_dir <- path.expand(CFG$paths$figures_dir)
+fig_dir <- cfg_path("figures_dir", "figure4")
 if (!dir.exists(fig_dir)) dir.create(fig_dir, recursive = TRUE)
 SAMPLE  <- "sfe_OTB_2384"
 BBOX    <- c(xmin = 2800, xmax = 4000, ymin = -7800, ymax = -6600)
@@ -49,7 +49,7 @@ EXPR_COLS  <- c("#F6EFE5", "#ECDDD0", "#D89E97", "#A03A4A", "#3A111A")
 EXPR_STOPS <- c(0.00,      0.28,      0.55,      0.80,      1.00)
 
 # --- Load + 06f override (cell census only) ----------------------------------
-f06f <- cfg_path("output_root", "06f_reclassification_polarization",
+f06f <- cfg_path("data_root", "2026_final_xenium_analysis", "output", "06f_reclassification_polarization",
                  "reclassified_xenium_scores.csv")
 recl <- fread(f06f, select = c("sample", "barcode_orig", "cell_label_06f"))
 

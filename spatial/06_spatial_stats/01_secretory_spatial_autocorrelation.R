@@ -46,12 +46,7 @@ for (d in c(out_path, fig_path, lisa_path, bilisa_path)) {
   if (!dir.exists(d)) dir.create(d, recursive = TRUE)
 }
 
-sfe_names <- c(
-  "sfe_tma_filtered",
-  "sfe_OTB_2384", "sfe_OTB_2417", "sfe_OTB_2432",
-  "sfe_OTB_2454", "sfe_OTB_2457", "sfe_OTB_2461",
-  "sfe_SP24_24824", "sfe_SP24_25573"
-)
+sfe_names <- c("sfe_tma_filtered", sfe_names_wt)
 
 RADIUS       <- 50      # µm — fixed-radius neighborhood (consistent with 09, 16a, 23)
 NSIM         <- 999     # permutations for local inference
@@ -249,6 +244,9 @@ for (sname in sfe_names) {
   sfe <- load_sfe(sname)
   cd <- as.data.frame(colData(sfe))
 
+  # Reconcile legacy SFE label with refactor naming (idempotent; no-op if absent)
+  cd$cell_label[cd$cell_label == "Transitioning epithelium"] <- "Intermediate epithelium"
+
   is_sec <- cd$cell_label %in% sec_types
   n_sec <- sum(is_sec)
   message("  Secretory cells: ", format(n_sec, big.mark = ","))
@@ -351,6 +349,9 @@ for (sname in sfe_names) {
 
   sfe <- load_sfe(sname)
   cd <- as.data.frame(colData(sfe))
+
+  # Reconcile legacy SFE label with refactor naming (idempotent; no-op if absent)
+  cd$cell_label[cd$cell_label == "Transitioning epithelium"] <- "Intermediate epithelium"
 
   is_sec <- cd$cell_label %in% sec_types
   n_sec <- sum(is_sec)
@@ -638,6 +639,9 @@ if (file.exists(tma_checkpoint)) {
   sfe <- load_sfe("sfe_tma_filtered")
   cd <- as.data.frame(colData(sfe))
   xy <- spatialCoords(sfe)
+
+  # Reconcile legacy SFE label with refactor naming (idempotent; no-op if absent)
+  cd$cell_label[cd$cell_label == "Transitioning epithelium"] <- "Intermediate epithelium"
 
   is_sec <- cd$cell_label %in% sec_types
   core_ids <- unique(cd$core_id[is_sec & !is.na(cd$core_id)])

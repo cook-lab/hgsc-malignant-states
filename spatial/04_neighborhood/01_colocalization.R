@@ -104,7 +104,12 @@ wt_crossk_samples <- c("sfe_OTB_2461", "sfe_OTB_2454", "sfe_SP24_24824")
 #' Extract coordinates and cell_label from an SFE object
 extract_coords_labels <- function(sfe, label_col = "cell_label") {
   xy <- spatialCoords(sfe)
-  labs <- colData(sfe)[[label_col]]
+  labs <- as.character(colData(sfe)[[label_col]])
+  # Rename-mismatch fix: deposited SFEs still carry the legacy
+  # "Transitioning epithelium"; standardize to the canonical "Intermediate
+  # epithelium" right at the read point, before any downstream match / color /
+  # filter on it (idempotent — a no-op if the legacy value is absent).
+  labs[labs == "Transitioning epithelium"] <- "Intermediate epithelium"
   data.frame(x = xy[, 1], y = xy[, 2], label = labs, stringsAsFactors = FALSE)
 }
 
@@ -292,9 +297,7 @@ rm(sfe_tma); gc(verbose = FALSE)
 
 # --- 1b. Whole tissue -------------------------------------------------------
 
-wt_names <- c("sfe_OTB_2384", "sfe_OTB_2417", "sfe_OTB_2432",
-              "sfe_OTB_2454", "sfe_OTB_2457", "sfe_OTB_2461",
-              "sfe_SP24_24824", "sfe_SP24_25573")
+wt_names <- sfe_names_wt
 
 wt_dat <- list()
 for (sname in wt_names) {

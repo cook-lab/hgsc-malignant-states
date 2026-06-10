@@ -70,7 +70,7 @@ plt.rcParams.update({
 })
 
 # ── Paths (config-resolved) ──────────────────────────────────
-LIANA_CSV = path("output_root", "17_cellcomm_nmf", "tables", "17b_liana_global.csv")
+LIANA_CSV = path("data_root", "2026_final_atlas", "output", "17_cellcomm_nmf", "tables", "17b_liana_global.csv")
 OUT_DIR   = path("output_root", "17c_secA_secB_communication_nmf")
 FIG_DIR   = os.path.join(OUT_DIR, "figs")
 TABLE_DIR = os.path.join(OUT_DIR, "tables")

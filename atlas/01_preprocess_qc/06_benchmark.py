@@ -34,7 +34,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from config.config import path  # noqa: E402
+from config.config import path, SEED  # noqa: E402
 
 # =========================
 # CONFIG
@@ -56,6 +56,8 @@ import scanpy as sc
 import pandas as pd
 import numpy as np
 import os
+
+np.random.seed(SEED)  # seed numpy RNG (scib-metrics subsampling) — best-effort determinism
 import json
 from datetime import datetime
 

@@ -22,6 +22,8 @@ OUTPUTS (output_root/03_epithelial_nmf/):
   - 11d_nmf_usage_raw.csv    raw per-cell factor usage
   - 11d_nmf_loadings.csv     gene loadings (H matrix)
   - 11d_factor_scores.csv    SecA/SecB enrichment scores per factor
+  - nmf_factor_mapping.json  dynamically-identified {"SecA":..., "SecB":...} factor
+                             map (asserted downstream; reference SecB=Factor_2)
   - 11d_*.svg/pdf            factor UMAPs, polarization scatter, loadings, violins
 
 MANUSCRIPT PANELS: feeds Fig 1G/H, Fig 1I, Fig 2A/C, SF5, SF6, Supp Data 4
@@ -40,6 +42,7 @@ Usage:
 
 import argparse
 import gc
+import json
 import os
 import sys
 import time
@@ -155,7 +158,7 @@ def load_epithelial():
     print("  [LOAD] Opening epithelial h5ad (backed)...", flush=True)
     t0 = time.time()
 
-    bdata = ad.read_h5ad(H5AD, backed="r")
+    bdata = ad.read_h5ad(H5AD)  # in-memory: anndata 0.12.2 backed-sparse .X/layers read is broken (audit H10)
     n_cells = bdata.n_obs
     genes = bdata.var_names.tolist()
 
@@ -164,9 +167,8 @@ def load_epithelial():
     umap_local = np.array(bdata.obsm["X_umap_local"])
 
     print(f"    Extracting counts matrix ({n_cells:,} x {len(genes):,})...", flush=True)
-    counts = bdata.layers["counts"][:, :]
+    counts = bdata.layers["counts"]
 
-    bdata.file.close()
     del bdata
     gc.collect()
 
@@ -559,6 +561,17 @@ def main():
 
     scores_df, best_secA, best_secB = identify_polarization_factors(loadings_df)
     scores_df.to_csv(os.path.join(OUT_DIR, "11d_factor_scores.csv"))
+
+    # Persist the dynamically-identified SecA/SecB factor mapping so downstream
+    # steps (02_prepare_nmf_labels.py, 04_functional/01) can ASSERT that the
+    # factor they reference by literal name still matches what was learned here.
+    # Guards against a re-run silently reordering factors (NMF factor indices
+    # are not stable across fits). Reference values: SecB=Factor_2, SecA=Factor_3.
+    factor_mapping = {"SecA": str(best_secA), "SecB": str(best_secB)}
+    mapping_path = os.path.join(OUT_DIR, "nmf_factor_mapping.json")
+    with open(mapping_path, "w") as _fh:
+        json.dump(factor_mapping, _fh, indent=2)
+    print(f"    Saved factor mapping: nmf_factor_mapping.json {factor_mapping}")
 
     print(f"\n  [FIGURES] Generating to {OUT_DIR}")
     plot_factor_umaps(usage_df, umap_coords, k, OUT_DIR)

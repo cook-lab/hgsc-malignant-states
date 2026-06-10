@@ -13,8 +13,8 @@
 #   - ref_palette / load_sfe from spatial/00_setup/00_setup.R
 #
 # OUTPUTS:
-#   - figures_dir/xenium_whole_tissue_snapshot_<sample>.{png,svg}
-#   - figures_dir/xenium_whole_tissue_snapshot_TMA.{png,svg}
+#   - figures_dir/figure4/xenium_whole_tissue_snapshot_<sample>.{png,svg}
+#   - figures_dir/figure4/xenium_whole_tissue_snapshot_TMA.{png,svg}
 #
 # MANUSCRIPT PANEL(S): Fig 4C (OTB_2384), SF10A (all whole tissues).
 #
@@ -33,9 +33,9 @@ source(.setup_path)
 
 suppressPackageStartupMessages({ library(data.table); library(ggplot2) })
 
-fig_dir <- path.expand(CFG$paths$figures_dir)
+fig_dir <- cfg_path("figures_dir", "figure4")
 if (!dir.exists(fig_dir)) dir.create(fig_dir, recursive = TRUE)
-f06f <- cfg_path("output_root", "06f_reclassification_polarization",
+f06f <- cfg_path("data_root", "2026_final_xenium_analysis", "output", "06f_reclassification_polarization",
                  "reclassified_xenium_scores.csv")
 stopifnot(file.exists(f06f))
 
@@ -87,6 +87,10 @@ override_with_06f <- function(cd, sample_name) {
   n_hit <- sum(!is.na(m))
   cat(sprintf("  06f override: %d / %d cells relabeled (%s)\n", n_hit, nrow(cd), sample_name))
   cd[!is.na(m), cell_label := sub$cell_label_06f[m[!is.na(m)]]]
+  # Deposited 06f cache still carries the legacy literal "Transitioning
+  # epithelium"; rename to the standardized "Intermediate epithelium" so the
+  # value matches ref_palette (otherwise these cells render with no colour).
+  cd[cell_label == "Transitioning epithelium", cell_label := "Intermediate epithelium"]
   cd
 }
 

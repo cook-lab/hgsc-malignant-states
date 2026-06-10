@@ -19,21 +19,30 @@
 # ============================================================================
 
 # --- Config + shared setup (replaces hardcoded /Volumes/CookLab/Sarah paths) ---
-here <- tryCatch(dirname(sys.frame(1)$ofile), error = function(e) ".")
+# Resolve script dir robustly: sys.frame(1)$ofile works when source()'d, the
+# --file= arg works under `Rscript <path>` (so config/00_setup resolve regardless
+# of CWD).
+here <- tryCatch(dirname(sys.frame(1)$ofile), error = function(e) NA_character_)
+if (is.na(here) || here == "." || is.null(here)) {
+  .fa <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
+  here <- if (length(.fa)) dirname(normalizePath(sub("^--file=", "", .fa[1]))) else "."
+}
 source(file.path(here, "..", "..", "config", "config.R"))   # CFG, cfg_obj, cfg_path
 source(file.path(here, "..", "00_setup", "00_setup.R"))      # load_sfe, save_sfe, theme_lab, nb_names, palettes
 set.seed(CFG$seed)
 
 library(RANN)
 
-out_dir <- file.path("output", "22_vascular_proximity")
-dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+# Route outputs through the central config so an OUTPUT_ROOT override lands here
+# (cfg_path('output_root', ...) builds the path under output_root and creates the
+# directory). Replaces the prior CWD-relative file.path("output", ...) which
+# bypassed config and wrote to <cwd>/output regardless of the override.
+out_dir <- cfg_path("output_root", "22_vascular_proximity")
 
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
-wt_names <- c("sfe_OTB_2384", "sfe_OTB_2417", "sfe_OTB_2432", "sfe_OTB_2454",
-              "sfe_OTB_2457", "sfe_OTB_2461", "sfe_SP24_24824", "sfe_SP24_25573")
+wt_names <- sfe_names_wt
 
 vascular_types <- c("Pericyte", "Endothelial")
 query_types    <- c("SecA epithelium", "Intermediate epithelium", "SecB epithelium")
@@ -49,10 +58,16 @@ for (nm in wt_names) {
 
   sfe <- load_sfe(nm)
   cd <- data.table(
+    cell_id    = colnames(sfe),
     cell_label = sfe$cell_label,
     x = spatialCoords(sfe)[, 1],
     y = spatialCoords(sfe)[, 2]
   )
+  # Standardize label: SFE objects still carry the legacy "Transitioning
+  # epithelium"; canonical name is "Intermediate epithelium" (project naming
+  # reconciliation). Done here so the query below matches the same cell set as
+  # the original source (which queried "Transitioning epithelium").
+  cd[cell_label == "Transitioning epithelium", cell_label := "Intermediate epithelium"]
 
   vasc <- cd[cell_label %in% vascular_types]
   message(sprintf("  %s vascular cells (%s Pericyte, %s Endothelial)",
@@ -76,6 +91,7 @@ for (nm in wt_names) {
 
     results[[length(results) + 1]] <- data.table(
       sample_id        = label,
+      cell_id          = query$cell_id,
       cell_label       = ct,
       dist_to_vascular = as.numeric(nn$nn.dists)
     )
@@ -95,6 +111,7 @@ message(sprintf("\nTotal measurements: %s", format(nrow(dist_dt), big.mark = ","
 message(sprintf("[%s] Loading TMA ...", Sys.time()))
 sfe_tma <- load_sfe("sfe_tma_filtered")
 cd_tma <- data.table(
+  cell_id     = colnames(sfe_tma),
   cell_label  = sfe_tma$cell_label,
   patient_id  = sfe_tma$patient_id,
   core_id     = sfe_tma$core_id,
@@ -102,6 +119,8 @@ cd_tma <- data.table(
   x = spatialCoords(sfe_tma)[, 1],
   y = spatialCoords(sfe_tma)[, 2]
 )
+# Standardize legacy "Transitioning epithelium" -> canonical "Intermediate epithelium"
+cd_tma[cell_label == "Transitioning epithelium", cell_label := "Intermediate epithelium"]
 
 # Per-core within TMA (tumour cores only).
 # Each TMA core is a physically separate tissue piece with its own coordinate
@@ -126,6 +145,7 @@ for (i in seq_len(nrow(tumour_core_ids))) {
       sample_id        = paste0("TMA_", pid),
       patient_id       = as.character(pid),
       core_id          = as.character(cid),
+      cell_id          = query$cell_id,
       cell_label       = ct,
       dist_to_vascular = as.numeric(nn$nn.dists)
     )

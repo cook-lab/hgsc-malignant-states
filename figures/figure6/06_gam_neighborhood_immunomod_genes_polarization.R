@@ -82,6 +82,10 @@ for (sname in WT_SAMPLES) {
 
   coords <- spatialCoords(sfe)
   labels <- as.character(sfe$cell_label)
+  # Rename-mismatch fix (idempotent): deposited SFE still carries the legacy
+  # "Transitioning epithelium"; standardize on the SAME 'labels' vector that
+  # the EPI_TYPES mask below keys on, so Intermediate cells are not dropped.
+  labels[labels == "Transitioning epithelium"] <- "Intermediate epithelium"
   barcodes <- colnames(sfe)
 
   epi_mask <- labels %in% EPI_TYPES

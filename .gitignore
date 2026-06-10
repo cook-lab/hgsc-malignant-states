@@ -15,3 +15,5 @@ __pycache__/
 .DS_Store
 ._*
 Rplots.pdf
+# Internal run logs (embed absolute machine paths) — never ship
+_run_logs/

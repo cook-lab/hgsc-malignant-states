@@ -1,9 +1,28 @@
 # figures/_prep — figure-data extraction helpers
 
-Run-once data-prep helpers that produce the lightweight caches the per-figure
-scripts read (so figures rebuild without re-loading multi-GB h5ads). Paths come
-from `config/` (no hardcoded `/Volumes/...`). Set the global seed from config in
-any stochastic step.
+Run-once data-prep helpers that document **how** the lightweight figure caches
+were derived (so the multi-GB h5ads need not be re-loaded to understand or
+regenerate them). Paths come from `config/` (no hardcoded `/Volumes/...`). Set
+the global seed from config in any stochastic step.
+
+**Cache contract (read this before assuming a prep edit will change a figure).**
+These helpers write their outputs to `output_root` (see the Outputs column).
+The per-figure render scripts, however, read the **deposited** copies of these
+caches from `data_root` — that is the canonical, published input set. So:
+
+- Re-running a `_prep` helper regenerates an *inspection* copy under
+  `output_root`; it lets you audit how a cache was built and compare it against
+  the deposited version.
+- It does **not** change what the figures render. The figures consume the
+  `data_root` cache, which the `_prep` helpers do not (and must not) overwrite.
+- Editing a `_prep` helper therefore does **not** propagate into the figures.
+  To deliberately re-derive a published cache you would regenerate it here and
+  then have the figure point at the new `output_root` copy — but the default,
+  faithful path keeps the figures on the deposited `data_root` caches.
+
+The exception is `figures/_prep/01_export_tma_barcode_patient_map.py`, whose
+`output_root/metadata/tma_barcode_patient_map.csv` IS the live input read by
+Fig 4A/B (a derived map deposited under `output_root`, not `data_root`).
 
 | Script | Inputs | Outputs | Feeds |
 |---|---|---|---|

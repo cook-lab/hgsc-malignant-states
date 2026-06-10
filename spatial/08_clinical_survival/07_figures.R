@@ -27,8 +27,14 @@ suppressPackageStartupMessages({
   library(data.table); library(ggplot2); library(patchwork); library(mgcv)
 })
 
-OUT_DIR <- file.path(out_dir, "29_macrophage_niche_survival")
-FIG_DIR <- file.path(OUT_DIR, "figures")
+# READ the published (frozen, deposited) niche-survival caches for paper-fidelity:
+# these hold the as-published values (e.g. spatial-distance n=88). Re-running the
+# backend (03/05/06/06b) writes regenerated copies under output_root that drift
+# slightly from the deposited snapshot (unseeded original labeling — see
+# docs/REPRODUCIBILITY.md), so prefer the frozen deposit when present.
+.frozen_29 <- cfg_path("data_root", "2026_final_xenium_analysis", "output", "29_macrophage_niche_survival")
+OUT_DIR <- if (dir.exists(.frozen_29)) .frozen_29 else file.path(out_dir, "29_macrophage_niche_survival")
+FIG_DIR <- file.path(out_dir, "29_macrophage_niche_survival", "figures")  # figures always written under output_root
 dir.create(FIG_DIR, recursive = TRUE, showWarnings = FALSE)
 
 LYMPH_LBLS <- c("T cell", "NK cell", "B cell", "Plasma cell")
@@ -143,7 +149,7 @@ panel_A_tma <- ggplot() +
             aes(x = x, y = fit), colour = COL_LYMPH, linewidth = 1.1) +
   labs(x = "Niche metabolic stress (z-score, K=50\u00b5m)",
        y = "Cell-type density (% of TME cells)",
-       title = "TMA validation (111 patients)",
+       title = "TMA validation",
        subtitle = "Pooled GAM + 95% CI") +
   theme_lab(base_size = 10)
 
@@ -187,11 +193,15 @@ panel_B <- ggplot(primary,
   labs(x = "log2( Enrichment_mac / Enrichment_lymph ) across top-vs-bottom niche stress decile",
        y = NULL,
        title = "Paired per-sample/patient log-enrichment: macrophages vs lymphocytes in top hypoxic decile",
-       subtitle = sprintf("WT: median LR=+1.08 (n=%d samples, %.0f%% positive, p=0.016); TMA: median LR=+1.58 (n=%d patients, %.0f%% positive, p=2.3e-8)",
+       subtitle = sprintf("WT: median LR=%+.2f (n=%d samples, %.0f%% positive, p=%.3g); TMA: median LR=%+.2f (n=%d patients, %.0f%% positive, p=%.3g)",
+                           median(primary[cohort == "WT"]$LR),
                            sum(primary$cohort == "WT"),
                            100 * mean(primary[cohort == "WT"]$LR > 0),
+                           wilcox.test(primary[cohort == "WT"]$LR, mu = 0)$p.value,
+                           median(primary[cohort == "TMA"]$LR),
                            sum(primary$cohort == "TMA"),
-                           100 * mean(primary[cohort == "TMA"]$LR > 0))) +
+                           100 * mean(primary[cohort == "TMA"]$LR > 0),
+                           wilcox.test(primary[cohort == "TMA"]$LR, mu = 0)$p.value)) +
   theme_lab(base_size = 10) +
   theme(axis.text.y = element_text(size = rel(0.55)),
         legend.position = "bottom")
@@ -264,9 +274,11 @@ panel_D_wt <- ggplot(sd_wt_long,
                                    Lymphocyte = COL_LYMPH),
                        guide = "none") +
   labs(x = NULL, y = "Median distance to top-hypoxia anchor (\u00b5m)",
-       title = "WT spatial distance (n=8 samples)",
-       subtitle = sprintf("\u0394 = %.1f \u00b5m; 100%% mac-closer; p=0.004 (paired, 1-sided)",
-                           median(sd_wt$delta))) +
+       title = sprintf("WT spatial distance (n=%d samples)", nrow(sd_wt)),
+       subtitle = sprintf("\u0394 = %.1f \u00b5m; %.0f%% mac-closer; p=%.3g (paired, 1-sided)",
+                           median(sd_wt$delta), 100 * mean(sd_wt$delta < 0),
+                           wilcox.test(sd_wt$Macrophage, sd_wt$Lymphocyte,
+                                       paired = TRUE, alternative = "less")$p.value)) +
   theme_lab(base_size = 10)
 
 panel_D_tma <- ggplot(sd_tma_long,
@@ -278,9 +290,13 @@ panel_D_tma <- ggplot(sd_tma_long,
                                    Lymphocyte = COL_LYMPH),
                        guide = "none") +
   labs(x = NULL, y = "Median distance to top-hypoxia anchor (\u00b5m)",
-       title = "TMA spatial distance (n=88 patients)",
-       subtitle = sprintf("\u0394 = %.1f \u00b5m; 83%% mac-closer; p=8.5\u00d710\u207b\u00b9\u00b2",
-                           median(sd_tma$delta, na.rm = TRUE))) +
+       title = sprintf("TMA spatial distance (n=%d patients)", nrow(sd_tma[!is.na(delta)])),
+       subtitle = sprintf("\u0394 = %.1f \u00b5m; %.0f%% mac-closer; p=%.3g (paired, 1-sided)",
+                           median(sd_tma$delta, na.rm = TRUE),
+                           100 * mean(sd_tma$delta < 0, na.rm = TRUE),
+                           wilcox.test(sd_tma[!is.na(delta)]$Macrophage,
+                                       sd_tma[!is.na(delta)]$Lymphocyte,
+                                       paired = TRUE, alternative = "less")$p.value)) +
   theme_lab(base_size = 10)
 
 ggsave(file.path(FIG_DIR, "fig29D_spatial_distance.png"),

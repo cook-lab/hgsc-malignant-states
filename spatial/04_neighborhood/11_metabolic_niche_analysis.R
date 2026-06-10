@@ -41,9 +41,7 @@ nb_assign$niche_name <- nb_names[nb_assign$neighborhood]
 
 # --- SFE names ---------------------------------------------------------------
 
-sfe_names <- c("sfe_tma_filtered", "sfe_OTB_2384", "sfe_OTB_2417", "sfe_OTB_2432",
-               "sfe_OTB_2454", "sfe_OTB_2457", "sfe_OTB_2461",
-               "sfe_SP24_24824", "sfe_SP24_25573")
+sfe_names <- c("sfe_tma_filtered", sfe_names_wt)
 
 # --- All 10 neighborhoods ---------------------------------------------------
 
@@ -136,6 +134,11 @@ for (sname in sfe_names) {
     cell_type  = cd_sub$cell_label,
     stringsAsFactors = FALSE
   )
+
+  # Rename-mismatch fix: deposited SFEs still carry the legacy epithelial
+  # label; downstream target_celltypes filters on "Intermediate epithelium".
+  # Idempotent (harmless if the legacy value is absent).
+  meta$cell_type[meta$cell_type == "Transitioning epithelium"] <- "Intermediate epithelium"
 
   # Grab pathway scores if present
   pw_cols <- grep("^pathway_", colnames(cd_sub), value = TRUE)

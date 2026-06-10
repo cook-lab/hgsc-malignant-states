@@ -13,8 +13,8 @@ INPUTS
         EXTERNAL DEPENDENCY (override ORGANOIDS_ROOT).
 
 OUTPUTS
-    - figures_dir/organoids_radar_characterization_secAB.{svg,png}        (1x3)
-    - figures_dir/organoids_radar_characterization_secAB_{progeny,hallmark,dorothea}.svg
+    - figures_dir/figure3/organoids_radar_characterization_secAB.{svg,png}        (1x3)
+    - figures_dir/figure3/organoids_radar_characterization_secAB_{progeny,hallmark,dorothea}.svg
 
 MANUSCRIPT PANEL(S): Fig 3G.
 
@@ -35,10 +35,10 @@ import matplotlib.gridspec as gridspec
 from matplotlib.lines import Line2D
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from config.config import obj, path  # noqa: E402
+from config.config import path  # noqa: E402
 
 # ---------- Paths ----------
-DATA_DIR = os.path.join(obj("organoids_root"),
+DATA_DIR = path("organoids_root",
                         "output/09_organoid_secB_characterization")
 OUT_STEM = "organoids_radar_characterization_secAB"
 
@@ -127,8 +127,8 @@ for spec, df_z in [(gs[0, 0], prog_z), (gs[0, 1], hall_z), (gs[0, 2], doro_z)]:
     radar_plot(fig.add_subplot(spec, polar=True), df_z, label_fontsize=FL)
 fig.legend(handles=handles, loc="lower center", ncol=2, frameon=False, fontsize=FL,
            bbox_to_anchor=(0.5, 0.01))
-fig.savefig(path("figures_dir", f"{OUT_STEM}.svg"), format="svg")
-fig.savefig(path("figures_dir", f"{OUT_STEM}.png"), format="png")
+fig.savefig(path("figures_dir", "figure3", f"{OUT_STEM}.svg"), format="svg")
+fig.savefig(path("figures_dir", "figure3", f"{OUT_STEM}.png"), format="png")
 plt.close(fig)
 
 # ---------- Individual ----------
@@ -139,7 +139,7 @@ for df_z, stem in [(prog_z, f"{OUT_STEM}_progeny"), (hall_z, f"{OUT_STEM}_hallma
     ax.legend(handles=handles, loc="upper right", bbox_to_anchor=(1.35, 1.1),
               frameon=False, fontsize=FN)
     fig.tight_layout()
-    fig.savefig(path("figures_dir", f"{stem}.svg"), format="svg")
+    fig.savefig(path("figures_dir", "figure3", f"{stem}.svg"), format="svg")
     plt.close(fig)
 
 print("Done.")

@@ -64,9 +64,7 @@ sample_type_pal <- c("tumour" = "#D55E00", "FT" = "#56B4E9")
 chemo_samples <- c("sfe_OTB_2417", "sfe_OTB_2432", "sfe_OTB_2457")
 
 # SFE names: sfe_tma_filtered + 8 WT
-sfe_wt_names <- c("sfe_OTB_2384", "sfe_OTB_2417", "sfe_OTB_2432",
-                   "sfe_OTB_2454", "sfe_OTB_2457", "sfe_OTB_2461",
-                   "sfe_SP24_24824", "sfe_SP24_25573")
+sfe_wt_names <- sfe_names_wt
 
 # Pathway column prefix
 pathway_prefix <- "pathway_"
@@ -136,6 +134,11 @@ message("[", Sys.time(), "] Processing sfe_tma_filtered...")
 sfe_tma <- load_sfe("sfe_tma_filtered")
 cd_tma <- as.data.table(as.data.frame(colData(sfe_tma)))
 cd_tma[, cell_id := colnames(sfe_tma)]
+# Idempotent rename: SFE colData still carries the legacy epithelial label
+# "Transitioning epithelium"; standardize to "Intermediate epithelium" before
+# any cell_label match (epi_types/sec_classes) so the Intermediate epitype is
+# not silently dropped from densities/proportions.
+cd_tma[cell_label == "Transitioning epithelium", cell_label := "Intermediate epithelium"]
 rm(sfe_tma); gc(verbose = FALSE)
 
 # Identify pathway columns and polarization_UCell
@@ -284,6 +287,11 @@ for (sname in sfe_wt_names) {
   sfe <- load_sfe(sname)
   cd <- as.data.table(as.data.frame(colData(sfe)))
   cd[, cell_id := colnames(sfe)]
+  # Idempotent rename: SFE colData still carries the legacy epithelial label
+  # "Transitioning epithelium"; standardize to "Intermediate epithelium" before
+  # any cell_label match (epi_types/sec_classes) so the Intermediate epitype is
+  # not silently dropped from densities/proportions.
+  cd[cell_label == "Transitioning epithelium", cell_label := "Intermediate epithelium"]
   rm(sfe); gc(verbose = FALSE)
 
   # Detect available columns for this sample

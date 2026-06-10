@@ -23,12 +23,7 @@ source(file.path(here, "..", "..", "config", "config.R"))   # CFG, cfg_obj, cfg_
 source(file.path(here, "..", "00_setup", "00_setup.R"))      # load_sfe, save_sfe, theme_lab, nb_names, palettes
 set.seed(CFG$seed)
 
-sfe_names <- c(
-  "sfe_tma_filtered",
-  "sfe_OTB_2384", "sfe_OTB_2417", "sfe_OTB_2432",
-  "sfe_OTB_2454", "sfe_OTB_2457", "sfe_OTB_2461",
-  "sfe_SP24_24824", "sfe_SP24_25573"
-)
+sfe_names <- c("sfe_tma_filtered", sfe_names_wt)
 
 message("=== 09c finalize neighborhood names ===")
 message("nb_names mapping in use:")

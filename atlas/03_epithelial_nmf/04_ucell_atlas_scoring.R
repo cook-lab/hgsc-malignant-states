@@ -44,9 +44,8 @@ library(yaml)
 
 # ── Paths ──────────────────────────────────────────────────────
 out_dir      <- cfg_path("output_root", "03_epithelial_nmf", "ucell_atlas")
-organoid_rds <- file.path(path.expand(CFG$paths$data_root), "2026_organoids",
-                          "output", "01_Data_Processing_and_QC",
-                          "seurat_untreated_baseline.rds")
+organoid_rds <- cfg_path("organoids_root", "output", "01_Data_Processing_and_QC",
+                         "seurat_untreated_baseline.rds")
 
 # ── Gene signatures (shared/signatures.yml — noBCAM 7-gene set) ──
 sigs <- yaml::read_yaml(file.path(repo_root, "shared", "signatures.yml"))

@@ -33,9 +33,7 @@ stopifnot(file.exists(NICHE_CACHE))
 
 MIN_CELLS_PER_GROUP <- 15
 
-WT_SAMPLES <- c("sfe_OTB_2384", "sfe_OTB_2417", "sfe_OTB_2432",
-                "sfe_OTB_2454", "sfe_OTB_2457", "sfe_OTB_2461",
-                "sfe_SP24_24824", "sfe_SP24_25573")
+WT_SAMPLES <- sfe_names_wt
 
 APOPTOSIS_GENES <- c("CASP3", "CASP8", "BAX", "FAS")
 PROLIF_GENES    <- c("MKI67", "TOP2A", "CCNB1", "CDC20", "CDK1",

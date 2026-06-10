@@ -12,7 +12,7 @@ INPUTS
         (built by the Fig-2B NMF-characterization prep helper; per-epitype G1/S/G2M %).
 
 OUTPUTS
-    - figures_dir/atlas_g2m_barplot_secAB.{svg,png}
+    - figures_dir/figure2/atlas_g2m_barplot_secAB.{svg,png}
 
 MANUSCRIPT PANEL(S): Fig 2B.
 
@@ -36,8 +36,8 @@ from config.config import path  # noqa: E402
 
 # ---------- Paths ----------
 DATA_DIR = path("data_root", "202605_epitype_manuscript", "20260429_figures", "data", "nmf_characterization")
-OUT_SVG = path("figures_dir", "atlas_g2m_barplot_secAB.svg")
-OUT_PNG = path("figures_dir", "atlas_g2m_barplot_secAB.png")
+OUT_SVG = path("figures_dir", "figure2", "atlas_g2m_barplot_secAB.svg")
+OUT_PNG = path("figures_dir", "figure2", "atlas_g2m_barplot_secAB.png")
 
 # ---------- Style ----------
 FA, FK, FN = 6, 5.5, 5

@@ -150,10 +150,7 @@ write.csv(gene_set_df, file.path(out_9b, "pathway_gene_sets_v2.csv"), row.names 
 message("Saved pathway_gene_sets_v2.csv")
 
 # --- SFE names ----
-sfe_names <- c("sfe_tma_filtered",
-               "sfe_OTB_2384", "sfe_OTB_2417", "sfe_OTB_2432",
-               "sfe_OTB_2454", "sfe_OTB_2457", "sfe_OTB_2461",
-               "sfe_SP24_24824", "sfe_SP24_25573")
+sfe_names <- c("sfe_tma_filtered", sfe_names_wt)
 
 # ============================================================================
 # SCORING LOOP — UCell on each SFE

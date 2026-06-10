@@ -58,8 +58,11 @@ warnings.filterwarnings("ignore")
 # ============================================================================
 
 H5AD = obj("atlas_epithelial")
-USAGE_CSV = path("output_root", "03_epithelial_nmf", "11d_nmf_usage.csv")
-FUNC_DIR = path("output_root", "04_functional")  # progeny/hallmark/dorothea/cell_cycle/flux parquets
+USAGE_CSV = path("data_root", "2026_final_atlas", "output", "11d_epithelial_nmf", "11d_nmf_usage.csv")
+# progeny/hallmark/dorothea/cell_cycle parquets live under the recharacterization dir;
+# flux_per_cell lives under the separate epithelial_flux dir (deposited layout).
+FUNC_DIR = path("data_root", "2026_final_atlas", "output", "11v2_epithelial_recharacterization")
+FLUX_DIR = path("data_root", "2026_final_atlas", "output", "11v2_epithelial_flux")
 OUT = path("output_root", "fig_secretory_polarization", "data")
 os.makedirs(OUT, exist_ok=True)
 
@@ -250,7 +253,7 @@ doro_top = select_top_differential(doro_means, n=8)
 zscore_df(doro_means[doro_top]).to_csv(os.path.join(OUT, "panel_g_dorothea_radar.csv"))
 print(f"  DoRoThEA top 8: {doro_top}")
 
-flux = pd.read_parquet(os.path.join(FUNC_DIR, "flux_per_cell.parquet"))
+flux = pd.read_parquet(os.path.join(FLUX_DIR, "flux_per_cell.parquet"))
 flux_shared = flux.index.intersection(shared)
 flux = flux.loc[flux_shared]
 flux_labels = meta.loc[flux_shared, "schema_nmf"].values

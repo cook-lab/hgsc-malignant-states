@@ -18,7 +18,8 @@ Two chains: clinical/Cox (01-02, ex-`10*`) and macrophage-niche survival
 | 04 | `04_glmm_presence.R` | per_cell_niche_scores → GLMM presence results | Fig 6B |
 | 05 | `05_paired_enrichment.R` | per_cell_niche_scores → paired enrichment tables | Fig 6E/6F |
 | 06 | `06_functional_survival.R` | niche scores + clinical → survival results | Fig 6 survival support |
-| 07 | `07_figures.R` | niche + survival outputs → `figures/29_macrophage_niche_survival/` | Fig 6B/6E/6F |
+| 06b | `06b_spatial_distance.R` | WT+TMA SFEs (pathway_hypoxia; 06f override) → `29_macrophage_niche_survival/spatial_distance_{per_sample_wt,per_patient_tma,summary,per_cell}.csv` | Fig 6 panel 29D; **read by 07** |
+| 07 | `07_figures.R` | niche + survival outputs (incl. `spatial_distance_*` from 06b) → `figures/29_macrophage_niche_survival/` | Fig 6B/6E/6F, 29D |
 | 08 | `08_xenium_protein_correlation.R` | MFI xlsx + sfe_tma_filtered + per_core_proportions → `41_xenium_protein_correlation/per_core_xenium_protein.csv` + correlations | **Fig 7C, 7D** |
 
 ## Notes

@@ -12,7 +12,7 @@ INPUTS
     - <data_root>/2026_final_atlas/pre-processing and integration/processed/
         atlas_concat_counts_only_X.h5ad         pre-filter raw concat (X for QC)
 
-OUTPUTS (under fig_data_dir/_prep_caches/)
+OUTPUTS (under output_root/_prep_caches/)
     - atlas_obs_prefilter.parquet   (2.73M cells, pre-QC, QC metrics computed)
     - atlas_obs_postfilter.parquet  (final filtered atlas obs)
 

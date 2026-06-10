@@ -72,8 +72,8 @@ for label in SECRETORY_LABELS:
     print(f"      {label}: {n:,}")
 
 # ── 2. Load epithelial h5ad & subset ─────────────────────────
-print("\n[2] Loading epithelial h5ad (backed mode)...")
-adata = ad.read_h5ad(EPI_H5AD, backed="r")
+print("\n[2] Loading epithelial h5ad (in-memory)...")
+adata = ad.read_h5ad(EPI_H5AD)  # in-memory: anndata 0.12.2 backed-sparse read is broken (audit H10)
 print(f"    Shape: {adata.shape[0]:,} cells x {adata.shape[1]:,} genes")
 
 shared_barcodes = sec_barcodes.intersection(adata.obs_names)

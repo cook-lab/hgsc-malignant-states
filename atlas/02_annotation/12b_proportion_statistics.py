@@ -269,7 +269,7 @@ def main():
 
     chi2_results = []
     for meta_key in METADATA_KEYS:
-        counts = load_counts("12_level1", meta_key)
+        counts = load_counts("12b_level1", meta_key)
         if counts is None:
             continue
         chi2, p, dof, v = chi_square_test(counts)
@@ -303,7 +303,7 @@ def main():
     all_level1_enrichments = []
 
     for meta_key in METADATA_KEYS:
-        counts = load_counts("12_level1", meta_key)
+        counts = load_counts("12b_level1", meta_key)
         if counts is None:
             continue
 
@@ -387,7 +387,7 @@ def main():
     all_epi_enrichments = []
 
     for meta_key in METADATA_KEYS:
-        counts = load_counts("12_epithelial_level2", meta_key)
+        counts = load_counts("12b_epithelial_level2", meta_key)
         if counts is None:
             continue
 
@@ -477,7 +477,7 @@ def main():
 
         any_data = False
         for meta_key in METADATA_KEYS:
-            counts = load_counts(f"12_{comp_key}_level2", meta_key)
+            counts = load_counts(f"12b_{comp_key}_level2", meta_key)
             if counts is None:
                 continue
 
@@ -546,7 +546,7 @@ def main():
 
     # Compute specific statistics for known findings
     # 1. Ascites enriched for macrophages
-    l1_met = load_counts("12_level1", "metastatic_site")
+    l1_met = load_counts("12b_level1", "metastatic_site")
     if l1_met is not None:
         oe_met, res_met, p_met = enrichment_table(l1_met)
 
@@ -576,7 +576,7 @@ def main():
         R.blank()
 
     # 3. Treatment effects on immune composition
-    l1_tx = load_counts("12_level1", "treatment_status")
+    l1_tx = load_counts("12b_level1", "treatment_status")
     if l1_tx is not None:
         oe_tx, res_tx, p_tx = enrichment_table(l1_tx)
         R.text("3. TREATMENT EFFECTS ON IMMUNE COMPOSITION")
@@ -593,7 +593,7 @@ def main():
         R.blank()
 
     # 4. Study batch effects
-    l1_study = load_counts("12_level1", "study")
+    l1_study = load_counts("12b_level1", "study")
     if l1_study is not None:
         oe_st, _, _ = enrichment_table(l1_study)
         chi2_st, p_st, _, v_st = chi_square_test(l1_study)
@@ -615,7 +615,7 @@ def main():
     R.blank()
 
     # Epithelial subtype × treatment
-    epi_tx = load_counts("12_epithelial_level2", "treatment_status")
+    epi_tx = load_counts("12b_epithelial_level2", "treatment_status")
     if epi_tx is not None:
         active_cols = [c for c in epi_tx.columns if "Excluded" not in c]
         epi_tx_active = epi_tx[active_cols]
@@ -640,7 +640,7 @@ def main():
         R.blank()
 
     # Epithelial × metastatic site
-    epi_ms = load_counts("12_epithelial_level2", "metastatic_site")
+    epi_ms = load_counts("12b_epithelial_level2", "metastatic_site")
     if epi_ms is not None:
         active_cols = [c for c in epi_ms.columns if "Excluded" not in c]
         epi_ms_active = epi_ms[active_cols]
@@ -657,7 +657,7 @@ def main():
 
     # Epithelial × genomic status
     for gkey in ["BRCA_status", "HRD_status", "TP53_status"]:
-        epi_gen = load_counts("12_epithelial_level2", gkey)
+        epi_gen = load_counts("12b_epithelial_level2", gkey)
         if epi_gen is None:
             continue
         active_cols = [c for c in epi_gen.columns if "Excluded" not in c]
@@ -682,7 +682,7 @@ def main():
     R.blank()
 
     # Macrophage subtypes × treatment
-    mac_tx = load_counts("12_macrophage_level2", "treatment_status")
+    mac_tx = load_counts("12b_macrophage_level2", "treatment_status")
     if mac_tx is not None:
         active_cols = [c for c in mac_tx.columns if "Excluded" not in c]
         mac_tx_active = mac_tx[active_cols]
@@ -693,7 +693,7 @@ def main():
             R.blank()
 
     # T/NK subtypes × treatment
-    tnk_tx = load_counts("12_tnkcell_level2", "treatment_status")
+    tnk_tx = load_counts("12b_tnkcell_level2", "treatment_status")
     if tnk_tx is not None:
         active_cols = [c for c in tnk_tx.columns if "Excluded" not in c]
         tnk_tx_active = tnk_tx[active_cols]
@@ -704,7 +704,7 @@ def main():
             R.blank()
 
     # Fibroblast subtypes × metastatic site
-    fib_ms = load_counts("12_fibroblast_level2", "metastatic_site")
+    fib_ms = load_counts("12b_fibroblast_level2", "metastatic_site")
     if fib_ms is not None:
         active_cols = [c for c in fib_ms.columns if "Excluded" not in c]
         fib_ms_active = fib_ms[active_cols]
@@ -724,7 +724,7 @@ def main():
     evidence_items = []
 
     for meta_key in METADATA_KEYS:
-        epi_counts = load_counts("12_epithelial_level2", meta_key)
+        epi_counts = load_counts("12b_epithelial_level2", meta_key)
         if epi_counts is None:
             continue
         active_cols = [c for c in epi_counts.columns if "Excluded" not in c]

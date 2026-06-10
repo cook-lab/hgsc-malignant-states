@@ -38,6 +38,16 @@ wt <- cache$wt
 tma <- cache$tma
 xc  <- fread(file.path(OUT_DIR, "cross_cohort_summary.csv"))
 
+# Idempotent rename: the per-cell morphometrics cache may have been written from
+# SFE/06f sources still carrying the legacy epithelial label "Transitioning
+# epithelium"; standardize to "Intermediate epithelium" before the EPI_LBLS
+# match/colour so the Intermediate epitype is not silently dropped/greyed.
+# Harmless no-op if the cache was already written with the standardized label.
+if ("cell_label" %in% names(wt))
+  wt[cell_label == "Transitioning epithelium", cell_label := "Intermediate epithelium"]
+if ("cell_label" %in% names(tma))
+  tma[cell_label == "Transitioning epithelium", cell_label := "Intermediate epithelium"]
+
 EPI_LBLS <- c("SecA epithelium", "Intermediate epithelium", "SecB epithelium")
 EPI_COLS <- ref_palette[EPI_LBLS]
 

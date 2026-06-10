@@ -43,8 +43,8 @@ np.random.seed(SEED)
 # PATHS (central config)
 # ============================================================================
 
-META_PQ = path("output_root", "fig_secretory_polarization", "data", "meta.parquet")
-USAGE_CSV = path("output_root", "11d_epithelial_nmf", "11d_nmf_usage.csv")
+META_PQ = path("data_root", "2026_final_atlas", "output", "fig_secretory_polarization", "data", "meta.parquet")
+USAGE_CSV = path("data_root", "2026_final_atlas", "output", "11d_epithelial_nmf", "11d_nmf_usage.csv")
 OUT_SVG = path("output_root", "figures", "supplementary", "SF5_atlas_nmf_factor_umaps.svg")
 OUT_PNG = path("output_root", "figures", "supplementary", "SF5_atlas_nmf_factor_umaps.png")
 

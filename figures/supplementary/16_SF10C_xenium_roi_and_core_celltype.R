@@ -35,10 +35,16 @@ set.seed(CFG$seed)
 OUT_DIR  <- cfg_path("output_root", "figures", "supplementary")
 core_dir <- file.path(OUT_DIR, "SF10C_xenium_by_core_celltype")
 
-f06f <- cfg_path("output_root", "06f_reclassification_polarization",
+f06f <- cfg_path("data_root", "2026_final_xenium_analysis", "output",
+                 "06f_reclassification_polarization",
                  "reclassified_xenium_scores.csv")
 stopifnot(file.exists(f06f))
 recl <- fread(f06f, select = c("sample", "barcode_orig", "cell_label_06f"))
+# Deposited 06f cache still carries the legacy literal "Transitioning
+# epithelium"; rename to the standardized "Intermediate epithelium" so the
+# value (later written onto sfe$cell_label) matches ref_palette; otherwise
+# these cells render with no fill colour in plotSpatialFeature.
+recl[cell_label_06f == "Transitioning epithelium", cell_label_06f := "Intermediate epithelium"]
 
 args <- commandArgs(trailingOnly = TRUE)
 mode <- if (length(args) == 0) "cores" else args[1]

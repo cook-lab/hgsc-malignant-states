@@ -12,6 +12,9 @@ paths:
   # Where pipeline outputs (tables, intermediate caches, figures) are written.
   output_root: "${OUTPUT_ROOT:-./output}"
   figures_dir: "${OUTPUT_ROOT:-./output}/figures"
+  # External organoid (PDO) substrate root (Fig 3). Default lives under data_root;
+  # override ORGANOIDS_ROOT (absolute) to point elsewhere. Used via cfg_path("organoids_root", ...).
+  organoids_root: "${ORGANOIDS_ROOT:-/Volumes/Nosepass/Epitype_Project/2026_organoids}"
 
 # Entry-point objects (relative to data_root). The integration is included in the repo
 # (atlas/01 steps 03–07, the official scVI/scANVI/MrVI/SysVI/Harmony chain run on a GPU);
@@ -32,13 +35,37 @@ objects:
   # data_root/2026_final_atlas/processed/), the QC+Scrublet-filtered concatenated counts.
   sfe_tma_filtered:   "2026_final_xenium_analysis/output/sfe/sfe_tma_filtered"   # canonical TMA entry-point
   sfe_dir:            "2026_final_xenium_analysis/output/sfe"
-  # External organoid (PDO) substrate — Fig 3. LIVE EXTERNAL DEPENDENCY: the PDO
-  # data are NOT part of this monorepo's deposited objects (see docs/REPRODUCIBILITY.md).
-  # Override ORGANOIDS_ROOT to point at wherever the 2026_organoids tree lives.
-  organoids_root:     "${ORGANOIDS_ROOT:-2026_organoids}"
+  # NOTE: the organoid (PDO) substrate root is an EXTERNAL input PATH — see
+  # paths.organoids_root above. It is NOT a data_root-relative object, so it is
+  # deliberately not duplicated here; consumers resolve it via path/cfg_path(
+  # "organoids_root", ...) so an absolute ORGANOIDS_ROOT override works in R and
+  # Python alike (audit H16 — cfg_obj() doubled the absolute override).
   # Figure-data caches written by the manuscript figure-prep helpers (figures/_prep/).
   # These are intermediate parquet/CSV caches, not deposited primary objects.
   fig_data_dir:       "${FIG_DATA_ROOT:-2026_final_atlas/output/fig_secretory_polarization/data}"
+  # ICON7 / GSE140082 bevacizumab external validation (expanded Fig 7; PLACEHOLDER).
+  # Per-patient scored cohort + result tables from the ICON7 backend module
+  # (2026_final_xenium_analysis/davids side quests/ICON7/). At full migration these
+  # move under the deposited bundle; see that module's MIGRATION.md.
+  icon7_cohort:       "2026_final_xenium_analysis/davids side quests/ICON7/data/processed/cohort_filtered.tsv"
+  icon7_results_dir:  "2026_final_xenium_analysis/davids side quests/ICON7/results/tables"
+  # Gene-symbol x sample expression matrix (collapsed from the HumanHT-12 probes by
+  # the ICON7 backend 01_prepare.R). Used ONLY by the supplementary confound/robustness
+  # script (S1_secb_bev_confound_robustness.R) to UCell-score competing hypoxia/
+  # angiogenesis signatures; the main panel needs only icon7_cohort.
+  icon7_expr:         "2026_final_xenium_analysis/davids side quests/ICON7/data/processed/expr_gene_symbol.rds"
+  # CCLE / DepMap 24Q4 + PRISM 25Q2 SMAC-mimetic side-quest (placeholder figure; David's
+  # side-quest). Streamlined to PRISM SMAC mimetics (main) + targeted NF-kB/BIRC3 Chronos
+  # (support). Source module: 2026_final_xenium_analysis/davids side quests/ccle_depmap/.
+  # ccle_line_scores is the deposited per-line scores cache (read by the 02/03 figure
+  # scripts); the raw DepMap/PRISM matrices below are read for the correlations. At full
+  # deposit these move under the DATA_ROOT bundle; see that module's MIGRATION.md.
+  ccle_line_scores:      "2026_final_xenium_analysis/davids side quests/ccle_depmap/data/processed/hgsc_line_scores.tsv"
+  ccle_model_meta:       "2026_final_xenium_analysis/davids side quests/ccle_depmap/data/raw/Model.csv"
+  ccle_expression:       "2026_final_xenium_analysis/davids side quests/ccle_depmap/data/raw/OmicsExpressionProteinCodingGenesTPMLogp1.csv"
+  ccle_crispr:           "2026_final_xenium_analysis/davids side quests/ccle_depmap/data/raw/CRISPRGeneEffect.csv"
+  ccle_prism_auc:        "2026_final_xenium_analysis/davids side quests/ccle_depmap/data/raw/REPURPOSINGAUCMatrix.csv"
+  ccle_prism_conditions: "2026_final_xenium_analysis/davids side quests/ccle_depmap/data/raw/REPURPOSINGCollapsedConditions.csv"
 
 # Reproducibility: global seed applied wherever stochastic steps were previously unseeded
 # (xenium 06f/06g cell-labeling, ConsensusOV RF, NMF inits, subsampling).

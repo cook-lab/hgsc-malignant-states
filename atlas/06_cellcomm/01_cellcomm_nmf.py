@@ -335,8 +335,16 @@ def main():
         sys.exit(f"ERROR: NMF mapping not found at {NMF_MAPPING}.\n"
                  f"Run 02_prepare_nmf_labels.py first.")
     nmf_map = pd.read_csv(NMF_MAPPING, index_col=0)
-    obs_full[GROUPBY] = nmf_map["celltype_nmf"].values
-    print(f"   Loaded NMF labels; unique {GROUPBY}: {obs_full[GROUPBY].nunique()}")
+    # Barcode (index) join, NOT positional .values: atlas_final.obs and the NMF
+    # mapping are both barcode-indexed over the full atlas, but a positional assign
+    # silently mis-wires cell types if their row order ever diverges. reindex aligns
+    # on barcode and the assertion fails loudly on any mismatch (audit follow-up).
+    obs_full[GROUPBY] = nmf_map["celltype_nmf"].reindex(obs_full.index)
+    n_missing = int(obs_full[GROUPBY].isna().sum())
+    assert n_missing == 0, (
+        f"{n_missing} atlas cells have no celltype_nmf in {os.path.basename(NMF_MAPPING)} "
+        f"— barcode mismatch between atlas_final.obs and the NMF mapping.")
+    print(f"   Loaded NMF labels (barcode join); unique {GROUPBY}: {obs_full[GROUPBY].nunique()}")
 
     level1_map = {}
     for nmf_label, l1 in zip(obs_full[GROUPBY], obs_full["celltype_level1"]):

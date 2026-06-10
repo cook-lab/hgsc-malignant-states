@@ -13,7 +13,7 @@ INPUTS
         EXTERNAL DEPENDENCY (override ORGANOIDS_ROOT).
 
 OUTPUTS
-    - figures_dir/organoids_g2m_barplot_secAB.{svg,png}
+    - figures_dir/figure3/organoids_g2m_barplot_secAB.{svg,png}
 
 MANUSCRIPT PANEL(S): Fig 3F.
 
@@ -33,13 +33,13 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from config.config import obj, path  # noqa: E402
+from config.config import path  # noqa: E402
 
 # ---------- Paths ----------
-DATA_DIR = os.path.join(obj("organoids_root"),
+DATA_DIR = path("organoids_root",
                         "output/09_organoid_secB_characterization")
-OUT_SVG = path("figures_dir", "organoids_g2m_barplot_secAB.svg")
-OUT_PNG = path("figures_dir", "organoids_g2m_barplot_secAB.png")
+OUT_SVG = path("figures_dir", "figure3", "organoids_g2m_barplot_secAB.svg")
+OUT_PNG = path("figures_dir", "figure3", "organoids_g2m_barplot_secAB.png")
 
 # ---------- Style ----------
 FA, FK, FN = 6, 5.5, 5

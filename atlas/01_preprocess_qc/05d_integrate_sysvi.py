@@ -30,7 +30,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from config.config import path  # noqa: E402
+from config.config import path, SEED  # noqa: E402
 
 # =========================
 # CONFIG
@@ -51,6 +51,9 @@ import pandas as pd
 import scvi
 from scvi.external import SysVI
 import torch
+
+scvi.settings.seed = SEED  # seed numpy/torch/scvi — best-effort determinism (GPU training
+# is not guaranteed bit-reproducible; deposited integrated object is the trust boundary)
 import json
 import os
 from datetime import datetime

@@ -13,8 +13,8 @@ Purpose
     uses the post-filter parquet (scores computed before doublet removal).
 
 INPUTS
-    output_root/figures/data/atlas_obs_prefilter.parquet
-    output_root/figures/data/atlas_obs_postfilter.parquet
+    output_root/_prep_caches/atlas_obs_prefilter.parquet
+    output_root/_prep_caches/atlas_obs_postfilter.parquet
     (produced by 00_extract_atlas_obs.py — run that first)
 
 OUTPUTS
@@ -46,8 +46,8 @@ np.random.seed(SEED)
 # PATHS (central config)
 # ============================================================================
 
-obs_pre = pd.read_parquet(path("output_root", "figures", "data", "atlas_obs_prefilter.parquet"))
-obs_post = pd.read_parquet(path("output_root", "figures", "data", "atlas_obs_postfilter.parquet"))
+obs_pre = pd.read_parquet(path("output_root", "_prep_caches", "atlas_obs_prefilter.parquet"))
+obs_post = pd.read_parquet(path("output_root", "_prep_caches", "atlas_obs_postfilter.parquet"))
 
 OUT_SVG = path("output_root", "figures", "supplementary", "SF1_atlas_qc_metrics_by_study.svg")
 OUT_PNG = path("output_root", "figures", "supplementary", "SF1_atlas_qc_metrics_by_study.png")

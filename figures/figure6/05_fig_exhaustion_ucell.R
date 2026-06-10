@@ -142,12 +142,23 @@ compute_deltas_ct <- function(dt, group_col, ct, score_col) {
   d
 }
 
+# w_t / w_nk are only well-defined when >= 2 samples are eligible (Wilcoxon
+# signed-rank needs a paired sample). Initialize NA-valued sentinels so the
+# downstream figure annotations (which reference w_t$p.value / w_nk$p.value)
+# degrade gracefully instead of erroring on an undefined symbol when the
+# eligible-sample count drops below 2.
+w_t  <- list(p.value = NA_real_)
+w_nk <- list(p.value = NA_real_)
+
 wt_t_per <- compute_deltas_ct(wt, "sample_key", "T cell", "tcell_exhaustion")
 wt_t_elig <- wt_t_per[n_top >= MIN_CELLS & n_bot >= MIN_CELLS & is.finite(delta)]
 if (nrow(wt_t_elig) >= 2) {
   w_t <- wilcox.test(wt_t_elig$delta, mu = 0)
   message(sprintf("  T cell: %d/%d samples eligible, median delta=%.4f, p=%.4f",
                   nrow(wt_t_elig), nrow(wt_t_per), median(wt_t_elig$delta), w_t$p.value))
+} else {
+  message(sprintf("  T cell: %d/%d samples eligible (<2) — skipping Wilcoxon test",
+                  nrow(wt_t_elig), nrow(wt_t_per)))
 }
 
 wt_nk_per <- compute_deltas_ct(wt, "sample_key", "NK cell", "nk_exhaustion")
@@ -156,6 +167,9 @@ if (nrow(wt_nk_elig) >= 2) {
   w_nk <- wilcox.test(wt_nk_elig$delta, mu = 0)
   message(sprintf("  NK cell: %d/%d samples eligible, median delta=%.4f, p=%.4f",
                   nrow(wt_nk_elig), nrow(wt_nk_per), median(wt_nk_elig$delta), w_nk$p.value))
+} else {
+  message(sprintf("  NK cell: %d/%d samples eligible (<2) — skipping Wilcoxon test",
+                  nrow(wt_nk_elig), nrow(wt_nk_per)))
 }
 
 tma_t_per <- compute_deltas_ct(tma, "patient_id", "T cell", "tcell_exhaustion")
@@ -243,6 +257,16 @@ tc_paired[, direction := fifelse(
 
 n_up_t <- sum(wt_t_elig$delta > 0)
 
+# NA-safe annotation: include the p-value line only when the Wilcoxon test ran
+# (>= 2 eligible samples); otherwise show counts without a "p = NA" line.
+lab_tc <- if (is.finite(w_t$p.value)) {
+  sprintf("n=%d samples\n%d/%d increase\np = %.3f",
+          nrow(wt_t_elig), n_up_t, nrow(wt_t_elig), w_t$p.value)
+} else {
+  sprintf("n=%d samples\n%d/%d increase",
+          nrow(wt_t_elig), n_up_t, nrow(wt_t_elig))
+}
+
 p_tc <- ggplot() +
   geom_violin(data = tc_cells,
               aes(x = x_num, y = tcell_exhaustion,
@@ -267,9 +291,7 @@ p_tc <- ggplot() +
   labs(x = NULL,
        y = "T cell exhaustion\n(UCell score)") +
   annotate("text", x = 1.5, y = Inf, vjust = 1.3,
-           label = sprintf("n=%d samples\n%d/%d increase\np = %.3f",
-                           nrow(wt_t_elig), n_up_t,
-                           nrow(wt_t_elig), w_t$p.value),
+           label = lab_tc,
            size = 1.8, colour = "grey30") +
   theme_lab() +
   theme(
@@ -311,6 +333,16 @@ nk_paired[, direction := fifelse(
 
 n_up_nk <- sum(wt_nk_elig$delta > 0)
 
+# NA-safe annotation: include the p-value line only when the Wilcoxon test ran
+# (>= 2 eligible samples); otherwise show counts without a "p = NA" line.
+lab_nk <- if (is.finite(w_nk$p.value)) {
+  sprintf("n=%d samples\n%d/%d increase\np = %.3f",
+          nrow(wt_nk_elig), n_up_nk, nrow(wt_nk_elig), w_nk$p.value)
+} else {
+  sprintf("n=%d samples\n%d/%d increase",
+          nrow(wt_nk_elig), n_up_nk, nrow(wt_nk_elig))
+}
+
 p_nk <- ggplot() +
   geom_violin(data = nk_cells,
               aes(x = x_num, y = nk_exhaustion,
@@ -335,9 +367,7 @@ p_nk <- ggplot() +
   labs(x = NULL,
        y = "NK cell exhaustion\n(UCell score)") +
   annotate("text", x = 1.5, y = Inf, vjust = 1.3,
-           label = sprintf("n=%d samples\n%d/%d increase\np = %.3f",
-                           nrow(wt_nk_elig), n_up_nk,
-                           nrow(wt_nk_elig), w_nk$p.value),
+           label = lab_nk,
            size = 1.8, colour = "grey30") +
   theme_lab() +
   theme(

@@ -18,6 +18,8 @@ Label assignment (NMF Factor_2 percentile schema; thresholds on non-ciliated epi
 INPUTS:
   - <data_root>/2026_final_atlas/celltype_h5ad/hgsc_atlas_final_epithelial.h5ad
   - output_root/03_epithelial_nmf/11d_nmf_usage.csv   (Factor_2)
+  - output_root/03_epithelial_nmf/nmf_factor_mapping.json (optional; asserts the
+    'Factor_2' literal still equals the SecB factor identified by 01_epithelial_nmf.py)
   - <data_root>/2026_final_atlas/tools/scFEA/data/*   (M168 metabolic model)
 
 OUTPUTS (output_root/04_functional/):
@@ -45,6 +47,7 @@ Usage:
     python 01_epitype_functional_characterization.py
 """
 
+import json
 import os
 import sys
 import time
@@ -82,6 +85,7 @@ warnings.filterwarnings("ignore")
 H5AD       = path("data_root", "2026_final_atlas", "celltype_h5ad",
                   "hgsc_atlas_final_epithelial.h5ad")
 NMF_CSV    = path("output_root", "03_epithelial_nmf", "11d_nmf_usage.csv")
+FACTOR_MAP = path("output_root", "03_epithelial_nmf", "nmf_factor_mapping.json")
 OUT_DIR    = path("output_root", "04_functional")
 SCFEA_DATA = path("data_root", "2026_final_atlas", "tools", "scFEA", "data")
 FLUX_ANNOT = os.path.join(SCFEA_DATA, "Human_M168_information.symbols.csv")
@@ -383,7 +387,26 @@ if xmax > 50:
 
 print("  Loading NMF Factor 2...")
 nmf_usage = pd.read_csv(NMF_CSV, index_col=0)
-f2 = nmf_usage["Factor_2"]
+
+# SecB-defining NMF factor (reference value; do NOT change the math). Assert it
+# still matches the factor 01_epithelial_nmf.py identified, so a factor-reordering
+# re-run fails loudly here rather than partitioning epitypes on the wrong factor.
+SECB_FACTOR = "Factor_2"
+if os.path.exists(FACTOR_MAP):
+    with open(FACTOR_MAP) as _fh:
+        _fmap = json.load(_fh)
+    if "SecB" in _fmap and _fmap["SecB"] != SECB_FACTOR:
+        raise AssertionError(
+            f"NMF factor mapping mismatch: 01_epithelial_nmf.py identified the "
+            f"SecB factor as '{_fmap['SecB']}', but this script partitions epitypes "
+            f"on '{SECB_FACTOR}'. Factors were likely reordered by a re-run."
+        )
+    print(f"  Factor-mapping check OK: SecB == {SECB_FACTOR}")
+else:
+    print(f"  NOTE: {os.path.basename(FACTOR_MAP)} not found; using reference SecB "
+          f"factor '{SECB_FACTOR}' unverified.")
+
+f2 = nmf_usage[SECB_FACTOR]
 shared = adata.obs_names.intersection(f2.index)
 print(f"  Shared cells: {len(shared):,}")
 

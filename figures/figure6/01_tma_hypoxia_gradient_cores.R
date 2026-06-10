@@ -87,6 +87,17 @@ if (file.exists(f06f)) {
   message("  WARNING: 06f file not found, using cell_label as-is")
 }
 
+# Standardize the epithelial polarization label: the deposited SFE (and the
+# 06f override) carry the legacy literal "Transitioning epithelium", which is
+# absent from ref_palette — so those cells would render with no fill / drop
+# from the legend. Rename to the canonical "Intermediate epithelium" before
+# colouring (consistent with sibling scripts 06/09 and 00_setup ref_palette).
+lab <- as.character(sfe$cell_label)
+n_trans <- sum(lab == "Transitioning epithelium", na.rm = TRUE)
+lab[lab == "Transitioning epithelium"] <- "Intermediate epithelium"
+sfe$cell_label <- lab
+message(sprintf("  renamed Transitioning -> Intermediate: %d cells", n_trans))
+
 # --- Compute gradient metrics -----------------------------------------------
 message("[3/6] Computing per-core hypoxia gradient metrics ...")
 

@@ -52,9 +52,9 @@ np.random.seed(SEED)
 # PATHS (central config)
 # ============================================================================
 
-META_PQ = path("output_root", "fig_secretory_polarization", "data", "meta.parquet")
+META_PQ = path("data_root", "2026_final_atlas", "output", "fig_secretory_polarization", "data", "meta.parquet")
 H5AD = obj("atlas_epithelial")
-USAGE_CSV = path("output_root", "11d_epithelial_nmf", "11d_nmf_usage.csv")
+USAGE_CSV = path("data_root", "2026_final_atlas", "output", "11d_epithelial_nmf", "11d_nmf_usage.csv")
 OUT_SVG = path("output_root", "figures", "supplementary", "SF6_atlas_secAB_expression_umaps.svg")
 OUT_PNG = path("output_root", "figures", "supplementary", "SF6_atlas_secAB_expression_umaps.png")
 
@@ -109,8 +109,8 @@ print("\nLoading epithelial metadata...", flush=True)
 meta = pd.read_parquet(META_PQ, columns=["UMAP1", "UMAP2"])
 print(f"  {len(meta):,} cells")
 
-print("Loading h5ad (backed)...", flush=True)
-adata = ad.read_h5ad(H5AD, backed="r")
+print("Loading h5ad (in memory; anndata 0.12 backed-sparse indexing is broken)...", flush=True)
+adata = ad.read_h5ad(H5AD)
 print(f"  h5ad shape: {adata.shape}")
 
 missing = [g for g in ALL_GENES if g not in adata.var_names]
@@ -123,13 +123,14 @@ assert (meta_idx_in_h5 == -1).sum() == 0, "Unmatched cells"
 
 print(f"Extracting expression for {len(ALL_GENES)} markers...", flush=True)
 col_indices = [gene_to_col[g] for g in ALL_GENES]
+# In-memory scipy sparse supports chained fancy row+col indexing (the backed-CSR
+# dataset in anndata 0.12.2 does not — its indexing path is broken). Order = ALL_GENES.
 expr = adata.X[meta_idx_in_h5, :][:, col_indices]
 if hasattr(expr, "toarray"):
     expr = expr.toarray()
 expr = np.asarray(expr, dtype=np.float32)
 print(f"  Expression matrix: {expr.shape}")
 
-adata.file.close()
 del adata
 gc.collect()
 

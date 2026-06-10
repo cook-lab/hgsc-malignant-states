@@ -8,7 +8,7 @@
 #   - SFEs (load_sfe): sfe_tma_filtered + 8 whole-tissue
 #
 # OUTPUTS:
-#   - output/09_neighborhood/neighborhood_assignments_k10.csv (canonical k=10)
+#   - output/09_neighborhood/neighborhood_assignments.csv (canonical k=10 assignments; read by stages 04-08 + clinical)
 #   - kmeans_centers_k10.csv, neighborhood_composition_k10.csv, neighborhood_name_mapping_k10.csv
 #   - SFEs updated with neighborhood, neighborhood_name
 #
@@ -59,22 +59,17 @@ message("Assigning all cells to nearest center...")
 assigns <- FNN::get.knnx(km$centers, nb_matrix_filt, k = 1)$nn.index[, 1]
 
 # --- Neighborhood naming ---
-nb_names <- c(
-  "1"  = "SecB-enriched epithelium",
-  "2"  = "Epi-stroma border",
-  "3"  = "Ciliated niche",
-  "4"  = "Late transitioning",
-  "5"  = "Mesothelial-stromal",
-  "6"  = "Early transitioning",
-  "7"  = "Immune-rich",
-  "8"  = "Intermediate epithelium",
-  "9"  = "SecA-enriched epithelium",
-  "10" = "Stroma-dominant"
-)
+# Use the SINGLE canonical `nb_names` map sourced from 00_setup.R (keyed
+# nb_1..nb_10; identities verified against neighborhood_composition.csv). A
+# divergent local map here previously shadowed it and disagreed with 00_setup /
+# 03 / 05-08 on which cluster is SecA vs SecB (audit B2). Do NOT redefine locally.
+# NOTE: this integer->biology map assumes the canonical k-means numbering; if a
+# fresh re-run renumbers clusters, verify identities against the
+# neighborhood_composition_k10.csv written below before trusting the labels.
 
 # Create labeled assignments
 nb_id    <- paste0("nb_", assigns)
-nb_named <- nb_names[as.character(assigns)]
+nb_named <- nb_names[paste0("nb_", assigns)]
 
 # Build full assignment table (including unassigned)
 all_features_mat$neighborhood    <- NA_character_
@@ -89,7 +84,7 @@ message("\n=== k=10 Neighborhood Summary ===")
 sizes <- table(factor(assigns, levels = 1:10))
 for (i in 1:10) {
   message(sprintf("  nb_%d  %-30s  %s cells (%.1f%%)",
-                  i, nb_names[as.character(i)],
+                  i, nb_names[paste0("nb_", i)],
                   format(sizes[i], big.mark = ","),
                   100 * sizes[i] / sum(sizes)))
 }
@@ -97,8 +92,8 @@ message("  Unassigned: ", sum(empty_mask))
 
 # --- Save assignments CSV ---
 assign_df <- all_features_mat[, c("cell_id", "sample_id", "neighborhood", "neighborhood_name")]
-write.csv(assign_df, file.path(nb_dir, "neighborhood_assignments_k10.csv"), row.names = FALSE)
-message("\nSaved: neighborhood_assignments_k10.csv")
+write.csv(assign_df, file.path(nb_dir, "neighborhood_assignments.csv"), row.names = FALSE)
+message("\nSaved: neighborhood_assignments.csv")
 
 # Save centers
 write.csv(km$centers, file.path(nb_dir, "kmeans_centers_k10.csv"))
@@ -111,7 +106,7 @@ write.csv(comp_mat, file.path(nb_dir, "neighborhood_composition_k10.csv"))
 # Save name mapping
 name_map <- data.frame(
   neighborhood = paste0("nb_", 1:10),
-  neighborhood_name = nb_names[as.character(1:10)],
+  neighborhood_name = nb_names[paste0("nb_", 1:10)],
   n_cells = as.numeric(sizes),
   pct = round(100 * as.numeric(sizes) / sum(sizes), 1),
   stringsAsFactors = FALSE
@@ -121,9 +116,7 @@ write.csv(name_map, file.path(nb_dir, "neighborhood_name_mapping_k10.csv"), row.
 # --- Write to SFEs ---
 message("\n=== Writing neighborhoods to SFEs ===")
 
-sfe_names <- c("sfe_tma_filtered", "sfe_OTB_2384", "sfe_OTB_2417", "sfe_OTB_2432",
-               "sfe_OTB_2454", "sfe_OTB_2457", "sfe_OTB_2461",
-               "sfe_SP24_24824", "sfe_SP24_25573")
+sfe_names <- c("sfe_tma_filtered", sfe_names_wt)
 
 for (sname in sfe_names) {
   message("\n--- Processing ", sname, " ---")
@@ -172,6 +165,6 @@ for (sname in sfe_names) {
 message("\n=== 09c Complete ===")
 message("All 9 SFEs updated with: neighborhood, neighborhood_name")
 message("Old assignments preserved in: neighborhood_old, neighborhood_name_old")
-message("Secretory trajectory: nb_9 (SecA) → nb_6 (Early trans) → nb_8 (Trans) → nb_4 (Late trans) → nb_1 (SecB)")
+message("Neighborhood identities (nb_1..nb_10) come from 00_setup nb_names; verify against neighborhood_composition_k10.csv.")
 
 log_session()

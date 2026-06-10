@@ -14,8 +14,15 @@
 # RUNTIME TIER: heavy
 #
 # Migrated from 2026_final_xenium_analysis/scripts/. Analytical logic preserved;
-# paths routed through central config, seed from CFG$seed, epithelial label
-# "Transitioning" -> "Intermediate", SecA/SecB from shared/signatures.yml.
+# paths routed through central config, epithelial label "Transitioning" ->
+# "Intermediate", SecA/SecB from shared/signatures.yml.
+#
+# SEEDING: a global set.seed(CFG$seed) is set at startup, BUT the bootstrap
+# block below intentionally re-seeds with a FIXED LITERAL seed,
+# set.seed(20260508), immediately before resampling. That literal seed is what
+# produced the published bootstrap 95% CIs (and the downstream c-index bootstrap
+# inherits the same RNG stream), so it is preserved verbatim — do NOT switch it
+# to CFG$seed (that would change the published CIs). See flagged_for_user.
 # ============================================================================
 
 # --- Config + shared setup (replaces hardcoded /Volumes/CookLab/Sarah paths) ---
@@ -66,6 +73,8 @@ fit_cox_hr <- function(df, score, time_col, event_col, covars = c("Age", "stage_
 
 # --- Bootstrap 95% CI -------------------------------------------------------
 sink_log("Bootstrap 95% CIs (1000 resamples)")
+# Fixed literal seed — reproduces the PUBLISHED bootstrap CIs. Preserved verbatim
+# (NOT CFG$seed) by design; see header. Changing it would change published numbers.
 set.seed(20260508)
 B <- 1000
 

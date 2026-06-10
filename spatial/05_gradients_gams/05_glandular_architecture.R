@@ -30,16 +30,14 @@ suppressPackageStartupMessages({
   library(BiocNeighbors); library(mgcv); library(Matrix)
 })
 
-OUT_DIR <- "output/28_glandular_architecture"
+OUT_DIR <- cfg_path("output_root", "28_glandular_architecture")
 dir.create(OUT_DIR, recursive = TRUE, showWarnings = FALSE)
 t0  <- Sys.time()
 msg <- function(...) cat(format(Sys.time(), "[%H:%M:%S]"), ..., "\n")
 
 EPI_LABELS <- c("SecA epithelium", "Intermediate epithelium",
                 "SecB epithelium")
-WT_SAMPLES <- c("sfe_OTB_2384", "sfe_OTB_2417", "sfe_OTB_2432",
-                "sfe_OTB_2454", "sfe_OTB_2457", "sfe_OTB_2461",
-                "sfe_SP24_24824", "sfe_SP24_25573")
+WT_SAMPLES <- sfe_names_wt
 
 NEIGHBOR_RADII  <- c(25, 50, 100)
 RAST_RES_UM     <- 10
@@ -49,7 +47,7 @@ LUMEN_EPI_FRAC  <- 0.70
 
 MIN_CELLS_PER_PATIENT <- 30   # TMA filter
 
-recl <- fread("output/06f_reclassification_polarization/reclassified_xenium_scores.csv",
+recl <- fread(cfg_path("output_root", "06f_reclassification_polarization", "reclassified_xenium_scores.csv"),
               select = c("sample", "barcode_orig", "cell_label_06f",
                           "polarization_UCell"))
 override_with_06f <- function(sfe, sample_key) {
@@ -59,6 +57,12 @@ override_with_06f <- function(sfe, sample_key) {
   hit <- !is.na(m)
   lab <- as.character(sfe$cell_label)
   lab[hit] <- sub$cell_label_06f[m[hit]]
+  # Idempotent legacy-label rename: the 06f reclassification cache (and the
+  # deposited SFE) still carry the legacy "Transitioning epithelium";
+  # downstream code keys on the canonical "Intermediate epithelium"
+  # (EPI_LABELS, SecA/SecB matches). Rename here so every match captures the
+  # Intermediate epitype. Harmless if already canonical.
+  lab[lab == "Transitioning epithelium"] <- "Intermediate epithelium"
   sfe$cell_label <- lab
   # Polarization: also attach 06f-computed values
   sfe$polarization_UCell <- sub$polarization_UCell[m]

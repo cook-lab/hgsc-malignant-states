@@ -34,8 +34,7 @@ out_dir <- cfg_path("output_root", "19d_gene_polarization_gams")
 dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
 
 sfe_dir <- dirname(cfg_obj("sfe_tma_filtered"))
-wt_names <- c("sfe_OTB_2384","sfe_OTB_2417","sfe_OTB_2432","sfe_OTB_2454",
-              "sfe_OTB_2457","sfe_OTB_2461","sfe_SP24_24824","sfe_SP24_25573")
+wt_names <- paste0("sfe_", CFG$cohort$whole_tissue)
 
 epi_types <- c("SecA epithelium","Intermediate epithelium","SecB epithelium")
 
@@ -43,8 +42,17 @@ epi_types <- c("SecA epithelium","Intermediate epithelium","SecB epithelium")
 message("=== Step 1: Loading expression from all WT samples ===")
 
 # Load polarization scores
+# NOTE: deliberate path rename. The original source read from
+# "16b_niche_succession_gams_v2"; in this repo the in-repo producer
+# (01_niche_succession_gams.R) writes the non-`_v2` name, so reading the
+# non-`_v2` directory here is internally consistent (not a bug).
 nf <- readRDS(cfg_path("output_root", "16b_niche_succession_gams", "neighborhood_features.rds"))
 nf <- as.data.table(nf)
+# Idempotent legacy-label rename: the deposited cache may still carry the
+# legacy epithelial value "Transitioning epithelium"; downstream filtering
+# keys on the canonical "Intermediate epithelium". Rename at the read point
+# (harmless if already canonical).
+nf[cell_label == "Transitioning epithelium", cell_label := "Intermediate epithelium"]
 pol_dt <- nf[, .(cell_id, polarization_UCell, sample_id, cell_label)]
 pol_dt <- pol_dt[cell_label %in% epi_types]
 pol_dt <- pol_dt[!grepl("TMA", sample_id)]
@@ -64,8 +72,11 @@ all_expr <- list()
 for (nm in wt_names) {
   message("  Loading ", nm, "...")
   sfe <- loadHDF5SummarizedExperiment(file.path(sfe_dir, nm))
-  
+
   cl <- colData(sfe)$cell_label
+  # Idempotent legacy-label rename: deposited SFEs still carry the legacy
+  # "Transitioning epithelium"; epi_mask keys on "Intermediate epithelium".
+  cl[cl == "Transitioning epithelium"] <- "Intermediate epithelium"
   epi_mask <- cl %in% epi_types
   sfe_epi <- sfe[, epi_mask]
   
@@ -221,7 +232,7 @@ out_file <- if (length(args) >= 2) args[2] else paste0(gene, "_polarization.png"
 library(data.table)
 library(ggplot2)
 
-res <- readRDS("output/19d_gene_polarization_gams/gene_gam_results.rds")
+res <- readRDS("__GAM_RDS__")
 
 if (!gene %in% names(res)) stop(gene, " not found. Available: ", paste(head(names(res), 10), collapse=", "), "...")
 
@@ -242,6 +253,13 @@ p <- ggplot(pred, aes(x = polarization, y = fitted)) +
 ggsave(out_file, p, width = 7, height = 4, dpi = 200, bg = "white")
 message("Saved: ", out_file)
 '
+# Interpolate the RESOLVED absolute path at generation time so the emitted
+# helper is self-contained (it never sources config, so cfg_path would be
+# undefined when a user runs `Rscript query_gene_gam.R GENE`). Use a literal
+# placeholder substitution (not sprintf) because the script body may contain
+# `%` characters.
+query_script <- gsub("__GAM_RDS__", file.path(out_dir, "gene_gam_results.rds"),
+                     query_script, fixed = TRUE)
 writeLines(query_script, file.path(out_dir, "query_gene_gam.R"))
 
 message("\n=== DONE ===")

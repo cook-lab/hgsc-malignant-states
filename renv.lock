@@ -2607,6 +2607,26 @@
       "Maintainer": "Hadley Wickham <hadley@posit.co>",
       "Repository": "CRAN"
     },
+    "SPLIT": {
+      "Package": "SPLIT",
+      "Version": "0.0.0.9000",
+      "Source": "GitHub",
+      "Type": "Package",
+      "Title": "SPLIT: Spatial Purification of Layered Intracellular Transcripts",
+      "Description": "Post-processes RCTD (spacexr) output to correct transcript spillover in single-cell spatial data (e.g. Xenium FFPE), producing decontaminated cell-type labels and purified counts. Used by spatial/03_annotation_polarization/05_clean_split_rctd.R (run_post_process_RCTD, purify).",
+      "License": "MIT",
+      "Imports": [
+        "spacexr",
+        "Matrix"
+      ],
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteRepo": "SPLIT",
+      "RemoteUsername": "bdsc-tds",
+      "RemoteRef": "HEAD",
+      "RemoteSha": "TODO_PIN_SPLIT_COMMIT_SHA",
+      "NeedsCompilation": "no"
+    },
     "SQUAREM": {
       "Package": "SQUAREM",
       "Version": "2021.1",
@@ -13770,6 +13790,23 @@
       "NeedsCompilation": "no",
       "Author": "Hadley Wickham [aut, cre, cph], Posit Software, PBC [cph, fnd]",
       "Maintainer": "Hadley Wickham <hadley@posit.co>",
+      "Repository": "CRAN"
+    },
+    "survRM2": {
+      "Package": "survRM2",
+      "Version": "1.0-4",
+      "Source": "Repository",
+      "Type": "Package",
+      "Title": "Comparing Restricted Mean Survival Time",
+      "Date": "2022-05-17",
+      "Author": "Hajime Uno, Lu Tian, Angel Cronin, Chakib Battioui, Miki Horiguchi",
+      "Maintainer": "Hajime Uno <huno@jimmy.harvard.edu>",
+      "Depends": [
+        "survival"
+      ],
+      "Description": "Performs two-sample comparisons using the restricted mean survival time (RMST) as a summary measure of the survival time distribution. Three kinds of between-group contrast metrics (i.e., the difference in RMST, the ratio of RMST and the ratio of the restricted mean time lost (RMTL)) are computed. It performs an ANCOVA-type covariate adjustment as well as unadjusted analyses for those measures.",
+      "License": "GPL-2",
+      "NeedsCompilation": "no",
       "Repository": "CRAN"
     },
     "survcomp": {

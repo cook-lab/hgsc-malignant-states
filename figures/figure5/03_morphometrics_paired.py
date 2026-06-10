@@ -90,6 +90,9 @@ wt_long  = pd.read_csv(WT_CSV)
 tma_long = pd.read_csv(TMA_CSV)
 wt_cnt   = pd.read_csv(WT_CNT)
 tma_cnt  = pd.read_csv(TMA_CNT)
+# Standardize cell_label "Transitioning epithelium" -> "Intermediate epithelium" (deposited cache predates the rename).
+wt_long["cell_label"]  = wt_long["cell_label"].replace({"Transitioning epithelium": "Intermediate epithelium"})
+tma_long["cell_label"] = tma_long["cell_label"].replace({"Transitioning epithelium": "Intermediate epithelium"})
 
 wt_eligible  = set(wt_cnt.loc[wt_cnt["eligible_paired"] == True,
                                "sample_key"].astype(str))
