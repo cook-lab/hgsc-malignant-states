@@ -30,6 +30,12 @@ loads a cache and renders a publication panel. Panel → script mapping is in `f
 
 ## Reproducing the paper
 
+### Data availability
+
+We are in the process of depositing all data to **Zenodo** and will provide the accession here
+shortly. Once it is available, download the bundle and point `DATA_ROOT` at it (see step 2 below
+and `data/README.md`) to reproduce any figure or table.
+
 ### Data flow
 
 The pipeline has two tiers:
