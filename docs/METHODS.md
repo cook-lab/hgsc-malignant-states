@@ -136,8 +136,8 @@ the Methods faithful to the deposited code and figures. The conclusion that
 secretory polarization is a **continuous gradient rather than discrete cell states**
 is instead supported by results that are shown: the tertile partition along the
 Factor-2 polarization axis (Fig 1I) and the spatial polarization gradients (Fig 4).
-The corresponding manuscript-text passage is flagged for removal in
-`_repro_refactor/reports/MANUSCRIPT_CORRECTIONS.md` (item 6).]**
+The corresponding manuscript-text passage is flagged for removal from the
+manuscript.]**
 
 Epithelial cells were partitioned along the polarization axis using percentile
 cut-offs computed on **Factor 2 usage among non-ciliated epithelial cells**:

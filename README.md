@@ -147,3 +147,9 @@ discrepancies (and the seed/cohort hardening applied here) are documented there.
 ## Citation / contact
 
 David Cook — dacook@ohri.ca · Ottawa Hospital Research Institute.
+
+## License
+
+Released under the **MIT License** — free to use, modify, and redistribute (including
+commercially), with no restrictions beyond retaining the copyright/license notice. See
+[`LICENSE`](LICENSE).

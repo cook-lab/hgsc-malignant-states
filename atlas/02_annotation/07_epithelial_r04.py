@@ -60,7 +60,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from config.config import obj, path, SEED  # noqa: E402
 
 # Canonical SecA/SecB polarization signatures (noBCAM 7-gene sets) loaded from the
-# shared single source of truth — do NOT inline divergent gene lists (CONVENTIONS rule 6).
+# shared single source of truth — do NOT inline divergent gene lists.
 import yaml as _yaml
 with open(Path(__file__).resolve().parents[2] / "shared" / "signatures.yml") as _fh:
     _SIGS = _yaml.safe_load(_fh)
