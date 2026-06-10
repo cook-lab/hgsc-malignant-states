@@ -7,7 +7,7 @@ and `spatial/00_setup/00_setup.R` (`load_sfe`, `ref_palette`, `theme_lab`,
 `OUTPUT_ROOT/figures/figure6/`.
 
 Whole-tissue cohort is taken from `CFG$cohort$whole_tissue` (the published 8 WT
-samples; FTE whole-tissue samples excluded — see `docs/REPRODUCIBILITY.md`).
+samples; FTE whole-tissue samples excluded).
 Epithelial labels standardized to SecA / Intermediate / SecB / Ciliated.
 
 | Order | Script | Panel(s) | Inputs → Outputs |
@@ -28,4 +28,4 @@ Dependencies / quirks:
   `<label>`, gene-subset). It renders nothing without a sample. For Fig 6K/6L use
   the SP24_24824 ROI calls (cell-type context + CTSL/MMP7/ICAM1); see script header.
 - 6I/6J p-values differ between header text and the published PDF — code migrated
-  faithfully; verify reproduced p (see `docs/REPRODUCIBILITY.md`, Fig 6J 6/8 vs 8/8).
+  faithfully; verify reproduced p (Fig 6J reproduces 6/8 vs published 8/8).

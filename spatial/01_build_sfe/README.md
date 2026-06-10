@@ -18,7 +18,7 @@ counts stored (normalization happens in `spatial/02_qc/`).
 `02_build_sfe_whole_tissue.R` enumerates exactly the published 8 whole tissues
 (`CFG$cohort$whole_tissue`) and **excludes** FT1-1 and EAOC-1-FTE
 (`CFG$cohort$fte_exclude_wt`) from the whole-tissue arm. FTE TMA cores remain in
-`sfe_tma`. See `docs/REPRODUCIBILITY.md`.
+`sfe_tma`.
 
 ## Figures supported
 Backend for all TMA + whole-tissue panels (Fig 4–7, SF10–SF14). Upstream of

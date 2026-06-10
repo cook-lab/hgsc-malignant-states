@@ -22,7 +22,7 @@
 #   (SingleR / pre-06f), NOT the 06f polarization reclassification used by the
 #   rest of Fig 4. If the published 4D used 06f labels, apply the 06f override
 #   as in 02_xenium_whole_tissue_snapshot.R before plotting. Migrated faithfully;
-#   resolution is the authors' call (see docs/REPRODUCIBILITY.md).
+#   resolution is the authors' call.
 #
 # NOTE: epithelial label standardized "Transitioning" -> "Intermediate".
 # ============================================================================

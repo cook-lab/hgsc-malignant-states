@@ -12,7 +12,7 @@
 #   - <data_root>/.../07_core_qc/core_qc_summary.csv      (FROZEN deposited per-core
 #       decisions = the PUBLISHED 97-patient cohort, 16 cores excluded; CANONICAL.
 #       Re-running 05b_core_qc on the current (drifted) sfe_tma gives 14 — the
-#       deposited frozen table is authoritative for the paper. See REPRODUCIBILITY.md.)
+#       deposited frozen table is authoritative for the paper.)
 #   - <data_root>/.../07_core_qc/patient_core_status.csv  (frozen; output_root fallback)
 #   - <data_root>/2026_final_xenium_analysis/data/clinical_data_clean.csv
 #
@@ -33,7 +33,7 @@ source("spatial/00_setup/00_setup.R")
 # The PUBLISHED 97-patient TMA cohort comes from the FROZEN deposited core-QC table
 # (16 cores excluded). Re-running 05b_core_qc on the CURRENT (drifted) sfe_tma yields
 # 14 excludes (cores 107/126 sit at the composition-outlier threshold and the object's
-# cell_labels have drifted since the table was frozen — see docs/REPRODUCIBILITY.md).
+# cell_labels have drifted since the table was frozen).
 # Prefer the deposited frozen table (canonical = paper); fall back to a locally
 # regenerated copy under output_root only if the deposited one is absent.
 .qc_deposited <- cfg_path("data_root", "2026_final_xenium_analysis", "output",

@@ -61,7 +61,7 @@ import os
 
 scvi.settings.seed = SEED  # seed numpy/torch/scvi for CellAssign training — best-effort
 # (GPU training is not guaranteed bit-reproducible; the deposited integrated object is
-# the trust boundary / entry point — see docs/REPRODUCIBILITY.md).
+# the trust boundary / entry point).
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt

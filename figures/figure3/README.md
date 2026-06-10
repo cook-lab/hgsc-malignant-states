@@ -5,7 +5,7 @@ config. Atlas NMF label standardized to **Intermediate** (was "Transitioning").
 
 EXTERNAL DEPENDENCY: organoid (PDO) substrate lives outside the deposited
 monorepo objects (`<organoids_root>`, default `2026_organoids`; override
-`ORGANOIDS_ROOT`). Kept per the migration brief; see `docs/REPRODUCIBILITY.md`.
+`ORGANOIDS_ROOT`). Kept per the migration brief.
 
 | # | Script | Panel | Inputs -> Output |
 |---|---|---|---|

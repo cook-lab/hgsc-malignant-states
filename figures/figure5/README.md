@@ -20,7 +20,7 @@ Ciliated** (was "Transitioning"). SecA/SecB 7-gene signatures live in
 
 Notes:
 - 5F: the generator reproduces the panel exactly, but thresholds on expression
-  magnitude (`lrscore > 0.5`), not significance — see `docs/REPRODUCIBILITY.md` (Fig 5F).
+  magnitude (`lrscore > 0.5`), not significance.
 - 06 renders both panels over the published full ROI (x=[7800,9000], y=[-7100,-5900]):
   the cell-type map (5H, `SP24_24824_roi_celltype_full.*`) and the 4-gene expression
   maps (5I, CTNNB1/ITGB5/MMP7/ICAM1). The published 5H/5I overlay two ROI rectangles

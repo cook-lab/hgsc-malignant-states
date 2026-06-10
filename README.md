@@ -22,7 +22,7 @@ spatial/     Xenium/Visium backend pipeline (R / SpatialFeatureExperiment)  [00_
 figures/     ONE reproduction script per manuscript panel (load intermediate → plot → export)
 tables/      Supplemental-data table generators + cleaned outputs
 data/        Pointers to deposited objects (not stored here; ~1.4 TB)
-docs/        Reproducibility notes, expanded methods, data availability
+docs/        Expanded methods, data availability
 ```
 
 The backend pipelines produce the intermediate objects/caches; each `figures/figureN/` script
@@ -109,21 +109,6 @@ with its ordered scripts and input→output map. **Runtime tiers** are in each s
 (fast / moderate / heavy); the heavy steps (CopyKAT, LIANA, BayesPrism, scFEA, per-sample GAMs,
 Lee's L) are flagged. Stochastic steps are seeded from `config.seed` for determinism.
 
-### Integration step (optional GPU re-run)
-The repository includes **every step from raw data through final figures, including
-multi-study integration**. These are the **official cluster scripts**
-(`01_preprocess` … `05_finalize`), migrated as `atlas/01_preprocess_qc/03_preprocess_hvg.py`
-through `07_finalize.py` with only the hardcoded cluster paths replaced by central config — not
-reconstructions. CellAssign labels (step 04) seed semi-supervised integration; **five methods
-are run and benchmarked** (scVI, scANVI, MrVI, SysVI, Harmony; step 06 scib-metrics), with
-**scANVI SELECTED** for the manuscript (step 07 `--method scanvi`). Re-running the integration is
-computationally expensive (originally run on a GPU cluster) and is **not required** to
-reproduce downstream results — the integrated atlas object (`hgsc_atlas_scanvi.h5ad`) is
-provided as a deposited entry object — but the integration code is included so that every
-step is open to scrutiny and can be independently re-executed (now seeded from `config.seed`;
-GPU model training is best-effort-deterministic, **not** bit-identical across hardware, so the
-deposited `hgsc_atlas_scanvi.h5ad` is the canonical reference — see docs/REPRODUCIBILITY.md).
-
 ## Integration is included (optional to re-run)
 
 The repository includes the full pipeline from raw data through final figures, **including
@@ -136,13 +121,8 @@ obsm `X_scanvi`), feeding `08_refilter_umap.py` which writes the deposited `hgsc
 Re-running it is computationally expensive (originally run on a GPU cluster) and is **not
 required** to reproduce downstream results — the integrated object is deposited as an entry
 object — but the code is included so every step can be independently scrutinized and re-executed.
-
-## Reproducibility status
-
-This code was independently re-executed and audited (see `docs/REPRODUCIBILITY.md`): the
-manuscript is strongly reproducible — the SecA/SecB axis, survival associations, spatial
-gradients, and morphometry all regenerate from the deposited inputs. A small number of known
-discrepancies (and the seed/cohort hardening applied here) are documented there.
+GPU model training is seeded from `config.seed` but is best-effort-deterministic, not
+bit-identical across hardware, so the deposited `hgsc_atlas_scanvi.h5ad` is the canonical reference.
 
 ## Citation / contact
 

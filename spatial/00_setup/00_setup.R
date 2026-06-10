@@ -88,8 +88,8 @@ for (d in c(out_dir, fig_dir, sfe_out_dir,
 
 # --- Cohort (published whole-tissue arm) -------------------------------------
 # Pinned to the published 8 whole tissues. The 2 FTE whole-tissue samples
-# (FT1-1, EAOC-1-FTE) are EXCLUDED from the whole-tissue arm (cohort drift fix —
-# see docs/REPRODUCIBILITY.md). FTE TMA cores (n=15) remain in the TMA.
+# (FT1-1, EAOC-1-FTE) are EXCLUDED from the whole-tissue arm (cohort drift fix).
+# FTE TMA cores (n=15) remain in the TMA.
 whole_tissue_samples <- CFG$cohort$whole_tissue
 sfe_names_wt         <- paste0("sfe_", whole_tissue_samples)
 # Full SFE set used downstream: merged TMA + the 8 published whole tissues.

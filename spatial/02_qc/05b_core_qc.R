@@ -25,8 +25,8 @@
 #
 # MANUSCRIPT PANEL(S): none directly — produces the core-exclusion list behind
 #   sfe_tma_filtered (Fig 4-7 TMA panels, SF10B/SF12). Runs BEFORE 06_filter_tma.R.
-#   The published cohort was built from the DEPOSITED copy of these tables (see
-#   docs/REPRODUCIBILITY.md); this script reproduces them deterministically.
+#   The published cohort was built from the DEPOSITED copy of these tables;
+#   this script reproduces them deterministically.
 # RUNTIME TIER: moderate
 #
 # Migrated from 2026_final_xenium_analysis/scripts/sandbox/core_qc.Rmd.

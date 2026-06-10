@@ -19,8 +19,8 @@
 # MANUSCRIPT PANEL(S): Fig 5F
 # RUNTIME TIER: fast (reads one CSV)
 #
-# NOTE: Fig 5F LIANA autocrine is flagged "under investigation" in
-#       docs/REPRODUCIBILITY.md — code migrated faithfully, no logic change.
+# NOTE: Fig 5F LIANA autocrine is flagged "under investigation";
+#       code migrated faithfully, no logic change.
 # ============================================================================
 
 import os

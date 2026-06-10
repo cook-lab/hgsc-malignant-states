@@ -72,7 +72,7 @@ objects:
 seed: 42
 
 # Published cohort (pin to the preprint; excludes the 2 FTE whole-tissue samples
-# added post-preprint that caused cohort drift — see docs/REPRODUCIBILITY.md).
+# added post-preprint that caused cohort drift).
 cohort:
   whole_tissue:   [OTB_2384, OTB_2417, OTB_2432, OTB_2454, OTB_2457, OTB_2461, SP24_24824, SP24_25573]
   fte_exclude_wt: [FT1-1, EAOC-1-FTE]   # FTE whole-tissue: NOT part of the published whole-tissue arm

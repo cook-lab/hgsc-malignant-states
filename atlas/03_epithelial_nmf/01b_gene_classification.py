@@ -26,8 +26,7 @@ MANUSCRIPT PANEL(S): upstream of Fig 7E/F/G — the signature-survival cache
 RUNTIME TIER: fast
 
 NOTE: SecA = Factor_3, SecB = Factor_2 (config polarization.factor = Factor_2;
-    the seeded NMF is deterministic, so the factor->program mapping is stable —
-    see docs/REPRODUCIBILITY.md). Migrated to close the missing-producer gap
+    the seeded NMF is deterministic, so the factor->program mapping is stable). Migrated to close the missing-producer gap
     (audit A4/H4): 05/06 previously read this table from a bare data_root literal
     into the untouched source tree, with no in-repo generator.
 """

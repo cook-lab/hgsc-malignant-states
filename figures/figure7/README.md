@@ -15,4 +15,4 @@ under `OUTPUT_ROOT/figures/figure7/`.
 Notes:
 - 03 computes the stepwise Cox in-script (unadjusted → + epi fraction → + stage + age;
   platinum intentionally omitted). The BayesPrism multivariate covariate set is a
-  documented discrepancy — see `docs/REPRODUCIBILITY.md`.
+  documented discrepancy.

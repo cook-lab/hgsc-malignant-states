@@ -47,7 +47,7 @@ Every figure script writes its panel file(s) to a **per-figure subdirectory** un
 | Fig 5A | `figures/figure5/01_gam_epithelial_pathways_polarization.R` | |
 | Fig 5B,5C | `figures/figure5/02_roi_OTB_2384_roi06_svgs.R` | |
 | Fig 5D,5E | `figures/figure5/03_morphometrics_paired.py` | |
-| Fig 5F | `figures/figure5/04_atlas_seca_secb_autocrine_shift.py` | **KNOWN ISSUE**: generator reproduces the panel exactly, but thresholds on expression magnitude (`lrscore>0.5`), not significance (see REPRODUCIBILITY.md → Fig 5F) |
+| Fig 5F | `figures/figure5/04_atlas_seca_secb_autocrine_shift.py` | **KNOWN ISSUE**: generator reproduces the panel exactly, but thresholds on expression magnitude (`lrscore>0.5`), not significance |
 | Fig 5G | `figures/figure5/05_gam_epithelial_genes_polarization.R` | |
 | Fig 5H | `figures/figure5/06_roi_SP24_24824_zoom_genes.R` | cell-type map over the full SP24_24824 ROI (`SP24_24824_roi_celltype_full.*`); same script renders 5I |
 | Fig 5I | `figures/figure5/06_roi_SP24_24824_zoom_genes.R` | 4-gene full-ROI maps (CTNNB1/ITGB5/MMP7/ICAM1); shares script with 5H |
@@ -57,11 +57,11 @@ Every figure script writes its panel file(s) to a **per-figure subdirectory** un
 | Fig 6E,6F | `figures/figure6/05_fig_exhaustion_ucell.R` | |
 | Fig 6G | `figures/figure6/06_gam_neighborhood_immunomod_genes_polarization.R` | |
 | Fig 6H | `figures/figure6/07_gam_macrophage_focal_polarization.R` | |
-| Fig 6I,6J | `figures/figure6/08_fig_macrophage_apoptosis_prolif_morphology.R` | **KNOWN ISSUE (6J)**: reproduces 6/8 p=0.042 vs published 8/8 p=0.008 (see REPRODUCIBILITY.md P1-b); migrated faithfully, not changed |
+| Fig 6I,6J | `figures/figure6/08_fig_macrophage_apoptosis_prolif_morphology.R` | **KNOWN ISSUE (6J)**: reproduces 6/8 p=0.042 vs published 8/8 p=0.008; migrated faithfully, not changed |
 | Fig 6K,6L | `figures/figure6/09_xenium_roi_whole_tissue_investigation.R` | **FLAG**: requires `<sample>` CLI arg; renders nothing without it |
 | Fig 7A,7B | `figures/figure7/01_xenium_forest_cox.R` | Cox forest OS/PFS |
 | Fig 7C,7D | `figures/figure7/02_xenium_protein_correlation_row.py` | |
-| Fig 7E,7F,7G | `figures/figure7/03_tcga_km_forest.R` | TCGA KM + stepwise Cox; BayesPrism covariate-set caveat (REPRODUCIBILITY.md P2-b) |
+| Fig 7E,7F,7G | `figures/figure7/03_tcga_km_forest.R` | TCGA KM + stepwise Cox; BayesPrism covariate-set caveat |
 
 ## Pending / placeholder panels (not yet assigned a manuscript number)
 
@@ -85,7 +85,7 @@ Every figure script writes its panel file(s) to a **per-figure subdirectory** un
 | SF4C | `figures/supplementary/09_SF4C_atlas_cnv_aneuploid_by_celltype.py` | n=251 |
 | SF5 | `figures/supplementary/10_SF5_atlas_nmf_factor_umaps.py` | |
 | SF6A-B | `figures/supplementary/11_SF6_atlas_secAB_expression_umaps.py` | SecA panels now use FBXO21 (signatures.yml) in place of source WT1 |
-| SF7 | `figures/supplementary/12_SF7_atlas_cnv_validation.py` | **KNOWN ISSUE**: caption "3735 clones" is a typo for **375** (see REPRODUCIBILITY.md P2-a) |
+| SF7 | `figures/supplementary/12_SF7_atlas_cnv_validation.py` | **KNOWN ISSUE**: caption "3735 clones" is a typo for **375** |
 | SF8 | `figures/supplementary/13_SF8_atlas_functional_heatmap.py` | scFEA flux label-map fixed |
 | SF9A-E | `figures/supplementary/14_SF9_atlas_epitype_by_metadata.py` | **FLAG**: source emits 6 panels; published PDF shows 5 (met-site dropped) |
 | SF10A | `figures/figure4/02_xenium_whole_tissue_snapshot.R` (`all` arg) | shared with Fig 4C |
@@ -115,4 +115,4 @@ Every figure script writes its panel file(s) to a **per-figure subdirectory** un
 
 ## Panel-map completeness
 
-All numbered manuscript panels Fig 1A..7G, SF1..SF14, and Supp Data 1-7 are accounted for. The only panels **without an in-repo generator** are the documented external/known-gap panels: **Fig 3A,3B,3D,3E,3F,3G** (external organoid data, TRUST-EXISTING) and **Fig 3C** (external flow cytometry). **Fig 5F** has a generator and reproduces exactly, but carries a statistical-threshold caveat (see `docs/REPRODUCIBILITY.md`). See `docs/REPRODUCIBILITY.md` for the full audit verdict and known-issues list.
+All numbered manuscript panels Fig 1A..7G, SF1..SF14, and Supp Data 1-7 are accounted for. The only panels **without an in-repo generator** are the documented external/known-gap panels: **Fig 3A,3B,3D,3E,3F,3G** (external organoid data, TRUST-EXISTING) and **Fig 3C** (external flow cytometry). **Fig 5F** has a generator and reproduces exactly, but carries a statistical-threshold caveat (thresholds on `lrscore` magnitude, not significance).

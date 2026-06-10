@@ -29,7 +29,7 @@
 #
 # NOTE: Fig 6I/6J header p-values differ between header text and published PDF
 #   (6I ~p=0.014 vs PDF 0.008; 6J 6/8 p=0.042 vs PDF 8/8 p=0.008). Code is
-#   migrated faithfully; see docs/REPRODUCIBILITY.md — reproduced p should be
+#   migrated faithfully; reproduced p should be
 #   verified against the live-filtered data, not silently changed.
 # ============================================================================
 

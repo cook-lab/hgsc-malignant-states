@@ -10,7 +10,7 @@
 #   CFG$cohort$whole_tissue. The two FTE whole-tissue samples
 #   (CFG$cohort$fte_exclude_wt = FT1-1, EAOC-1-FTE) are EXCLUDED here — they
 #   were added post-preprint and caused cohort drift. FTE TMA cores stay in the
-#   TMA (built by 01_build_sfe_tma.R). See docs/REPRODUCIBILITY.md.
+#   TMA (built by 01_build_sfe_tma.R).
 #
 # INPUTS:
 #   - <data_root>/2026_final_xenium_analysis/data/xenium/whole_tissue/<sample>

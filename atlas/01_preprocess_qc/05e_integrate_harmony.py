@@ -49,7 +49,7 @@ import json
 import os
 
 np.random.seed(SEED)  # seed numpy RNG (harmonypy run_harmony k-means init) — best-effort
-# (deposited integrated object is the trust boundary; see docs/REPRODUCIBILITY.md)
+# (deposited integrated object is the trust boundary)
 from datetime import datetime
 import matplotlib
 matplotlib.use("Agg")

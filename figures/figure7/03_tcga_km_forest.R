@@ -24,8 +24,8 @@
 # MANUSCRIPT PANEL(S): Fig 7E (KM OS), Fig 7F (KM PFS), Fig 7G (stepwise Cox forest)
 # RUNTIME TIER: fast (per-patient table; in-script Cox)
 #
-# NOTE: BayesPrism multivariate covariate set is a documented discrepancy
-#   (docs/REPRODUCIBILITY.md); the in-script Cox is migrated faithfully.
+# NOTE: BayesPrism multivariate covariate set is a documented discrepancy;
+#   the in-script Cox is migrated faithfully.
 # ============================================================================
 
 .here     <- dirname(sub("^--file=", "", grep("^--file=", commandArgs(FALSE), value = TRUE)[1]))

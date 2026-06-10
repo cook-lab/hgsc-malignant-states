@@ -30,8 +30,7 @@ suppressPackageStartupMessages({
 # READ the published (frozen, deposited) niche-survival caches for paper-fidelity:
 # these hold the as-published values (e.g. spatial-distance n=88). Re-running the
 # backend (03/05/06/06b) writes regenerated copies under output_root that drift
-# slightly from the deposited snapshot (unseeded original labeling — see
-# docs/REPRODUCIBILITY.md), so prefer the frozen deposit when present.
+# slightly from the deposited snapshot (unseeded original labeling), so prefer the frozen deposit when present.
 .frozen_29 <- cfg_path("data_root", "2026_final_xenium_analysis", "output", "29_macrophage_niche_survival")
 OUT_DIR <- if (dir.exists(.frozen_29)) .frozen_29 else file.path(out_dir, "29_macrophage_niche_survival")
 FIG_DIR <- file.path(out_dir, "29_macrophage_niche_survival", "figures")  # figures always written under output_root
