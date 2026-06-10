@@ -22,14 +22,19 @@
 # ============================================================================
 set -uo pipefail
 
-REPO="/Volumes/Nosepass/Epitype_Project/hgsc-malignant-states"
-PY="/Users/dpcook/miniforge3/envs/epitype-py/bin/python"
-RS="/usr/local/bin/Rscript"
+# Repo root = directory containing this script (portable; no hardcoded location).
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Interpreters: override PY/RS to point at a specific env; otherwise use what's on PATH
+# (activate the project conda env, and ensure an R 4.5.x Rscript is on PATH, first).
+PY="${PY:-python}"
+RS="${RS:-Rscript}"
 TIMEOUT_SECS="${PANEL_TIMEOUT:-3600}"
 
-export DATA_ROOT="/Volumes/Nosepass/Epitype_Project"
-export OUTPUT_ROOT="$REPO/output"
-export ORGANOIDS_ROOT="/Volumes/Nosepass/Epitype_Project/2026_organoids"
+# Data location: override DATA_ROOT / ORGANOIDS_ROOT to point at a mounted drive or a
+# Zenodo download (mirrors the ${VAR:-default} contract in config/config.yml).
+export DATA_ROOT="${DATA_ROOT:-/Volumes/Nosepass/Epitype_Project}"
+export OUTPUT_ROOT="${OUTPUT_ROOT:-$REPO/output}"
+export ORGANOIDS_ROOT="${ORGANOIDS_ROOT:-$DATA_ROOT/2026_organoids}"
 export PYTHONPATH="$REPO"
 export MPLBACKEND="Agg"
 
