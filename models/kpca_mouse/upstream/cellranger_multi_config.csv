@@ -1,0 +1,20 @@
+[gene-expression]
+reference,/path/to/refdata-cellranger-GRCm39-2024-A
+chemistry,auto
+no-secondary,false
+create-bam,true
+probe-set,/path/to/cellranger-9.0.0/probe_sets/Chromium_Mouse_Transcriptome_Probe_Set_v1.1.1_GRCm39-2024-A.csv
+filter-probes,true
+cell-annotation-model,auto
+skip-cell-annotation,false
+
+[libraries]
+fastq_id,fastqs,lanes,feature_types,subsample_rate
+FlexPool2,/path/to/fastqs_run1,any,Gene Expression,
+FlexPool2,/path/to/fastqs_run2,any,Gene Expression,
+
+[samples]
+sample_id,probe_barcode_ids,description,expect_cells,force_cells
+KPCA-B_B2,BC002,,,
+BPPNM_B2,BC003,,,
+PPNM_B3,BC004,,,

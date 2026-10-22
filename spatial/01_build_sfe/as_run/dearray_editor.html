@@ -1,0 +1,500 @@
+<title>COEUR TMA De-array</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg:#0d1418; --panel:#141e24; --panel2:#1b272e; --line:#2a3a43;
+    --ink:#e7eef1; --ink-dim:#9fb2bc; --ink-faint:#67808c;
+    --accent:#39c2cf; --accent-ink:#062a2e;
+    --core:#39c2cf; --flag:#f2b544; --fte:#b98cf0; --control:#7fd18a; --removed:#f2685f;
+    --shadow:0 6px 24px rgba(0,0,0,.35);
+    --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+    --sans:"IBM Plex Sans",system-ui,sans-serif;
+  }
+  :root[data-theme="light"]{
+    --bg:#eef3f5; --panel:#ffffff; --panel2:#f2f6f8; --line:#d3dee3;
+    --ink:#12242c; --ink-dim:#476069; --ink-faint:#7d949e;
+    --accent:#0f8f9c; --accent-ink:#ffffff;
+    --core:#0f8f9c; --flag:#b9791a; --fte:#7b4fc0; --control:#2f8f4a; --removed:#cf3b32;
+    --shadow:0 6px 20px rgba(30,60,70,.14);
+  }
+  @media (prefers-color-scheme:light){
+    :root:not([data-theme="dark"]){
+      --bg:#eef3f5; --panel:#ffffff; --panel2:#f2f6f8; --line:#d3dee3;
+      --ink:#12242c; --ink-dim:#476069; --ink-faint:#7d949e;
+      --accent:#0f8f9c; --accent-ink:#ffffff;
+      --core:#0f8f9c; --flag:#b9791a; --fte:#7b4fc0; --control:#2f8f4a; --removed:#cf3b32;
+      --shadow:0 6px 20px rgba(30,60,70,.14);
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+    display:flex;flex-direction:column;overflow:hidden}
+  header{display:flex;align-items:center;gap:18px;padding:10px 16px;
+    background:var(--panel);border-bottom:1px solid var(--line);flex:0 0 auto}
+  header h1{font-size:15px;font-weight:600;margin:0;letter-spacing:.2px}
+  header h1 .sub{color:var(--ink-faint);font-weight:500}
+  #slideSel{background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:8px;
+    padding:6px 10px;font-family:var(--mono);font-size:12px;cursor:pointer}
+  #slideSel:focus{outline:2px solid var(--accent)}
+  .mapref{position:absolute;left:12px;bottom:12px;width:300px;max-height:62%;background:var(--panel);
+    border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:10px;overflow:auto}
+  .mapref h3{margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--ink-faint)}
+  .mapref img{width:100%;border-radius:6px;background:#fff;display:block}
+  .mapref .close{position:absolute;top:8px;right:10px;cursor:pointer;color:var(--ink-faint);font-size:15px;background:none;border:none}
+  .counts{display:flex;gap:18px;margin-left:auto;align-items:center;font-family:var(--mono);font-size:12px}
+  .counts b{font-size:18px;font-weight:600}
+  .counts .cell{display:flex;flex-direction:column;line-height:1.15}
+  .counts .cell span{color:var(--ink-faint);font-size:10px;text-transform:uppercase;letter-spacing:.7px}
+  .delta-ok{color:var(--control)} .delta-warn{color:var(--flag)}
+  main{flex:1 1 auto;display:flex;min-height:0}
+  .rail{width:210px;flex:0 0 auto;background:var(--panel);border-right:1px solid var(--line);
+    padding:12px;display:flex;flex-direction:column;gap:14px;overflow-y:auto}
+  .grp{display:flex;flex-direction:column;gap:7px}
+  .grp>.lbl{font-size:10px;text-transform:uppercase;letter-spacing:.9px;color:var(--ink-faint);font-weight:600}
+  button.tool{display:flex;align-items:center;gap:9px;width:100%;text-align:left;
+    background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:8px;
+    padding:8px 10px;font-family:var(--sans);font-size:13px;cursor:pointer;transition:.12s}
+  button.tool:hover{border-color:var(--accent)}
+  button.tool[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+  button.tool .k{margin-left:auto;font-family:var(--mono);font-size:10px;opacity:.6}
+  button.tool:disabled{opacity:.4;cursor:not-allowed}
+  button.tool.danger:hover{border-color:var(--removed)}
+  .canvas-wrap{flex:1 1 auto;position:relative;min-width:0;background:
+    radial-gradient(circle at 50% 40%, color-mix(in srgb,var(--panel2) 60%,var(--bg)) 0%,var(--bg) 90%)}
+  svg{width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+  svg.mode-add{cursor:crosshair} svg.dragging{cursor:grabbing}
+  #bgimg{image-rendering:auto}
+  .core{cursor:pointer}
+  .core .ring{fill:transparent;stroke-width:2;vector-effect:non-scaling-stroke}
+  .core .dot{vector-effect:non-scaling-stroke}
+  .core.sel .ring{stroke-width:3.5}
+  .core .lab{font-family:var(--mono);font-weight:500;fill:var(--ink);paint-order:stroke;
+    stroke:var(--bg);stroke-width:3px;vector-effect:non-scaling-stroke;text-anchor:middle;dominant-baseline:middle}
+  .st-core .ring{stroke:var(--core)} .st-core .dot{fill:var(--core)}
+  .st-flag .ring{stroke:var(--flag)} .st-flag .dot{fill:var(--flag)}
+  .st-fte .ring{stroke:var(--fte)} .st-fte .dot{fill:var(--fte)}
+  .st-control .ring{stroke:var(--control)} .st-control .dot{fill:var(--control)}
+  .st-removed .ring{stroke:var(--removed);stroke-dasharray:6 5} .st-removed .dot{fill:var(--removed)}
+  .st-removed{opacity:.55}
+  .inspector{position:absolute;top:12px;right:12px;width:250px;background:var(--panel);
+    border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:14px;font-size:13px}
+  .inspector h2{margin:0 0 2px;font-size:13px;font-weight:600}
+  .inspector .id{font-family:var(--mono);color:var(--accent);font-size:12px;margin-bottom:10px}
+  .field{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+  .field label{font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--ink-faint)}
+  .field input,.field select{background:var(--panel2);border:1px solid var(--line);color:var(--ink);
+    border-radius:7px;padding:6px 8px;font-family:var(--sans);font-size:13px}
+  .field input:focus,.field select:focus{outline:2px solid var(--accent);outline-offset:0}
+  .status-row{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+  .status-row button{font-size:11px;padding:6px;border-radius:7px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--ink);cursor:pointer;font-family:var(--sans)}
+  .status-row button[aria-pressed="true"]{border-width:2px;font-weight:600}
+  .status-row button[data-s="core"][aria-pressed="true"]{border-color:var(--core);color:var(--core)}
+  .status-row button[data-s="flag"][aria-pressed="true"]{border-color:var(--flag);color:var(--flag)}
+  .status-row button[data-s="fte"][aria-pressed="true"]{border-color:var(--fte);color:var(--fte)}
+  .status-row button[data-s="control"][aria-pressed="true"]{border-color:var(--control);color:var(--control)}
+  .inspector .meta{font-family:var(--mono);font-size:11px;color:var(--ink-faint);margin-top:2px}
+  .legend{display:flex;flex-wrap:wrap;gap:8px 12px;font-size:11px;color:var(--ink-dim)}
+  .legend .sw{display:inline-flex;align-items:center;gap:5px}
+  .legend .sw i{width:11px;height:11px;border-radius:50%;border:2px solid;display:inline-block}
+  footer{flex:0 0 auto;display:flex;align-items:center;gap:16px;padding:7px 16px;background:var(--panel);
+    border-top:1px solid var(--line);font-size:11.5px;color:var(--ink-dim)}
+  footer .hint{font-family:var(--mono);color:var(--ink-faint)}
+  .save-pill{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--ink-faint);display:flex;align-items:center;gap:6px}
+  .save-pill i{width:8px;height:8px;border-radius:50%;background:var(--ink-faint)}
+  .save-pill.ok i{background:var(--control)} .save-pill.saving i{background:var(--flag)}
+  .save-pill.off i{background:var(--removed)}
+  kbd{font-family:var(--mono);background:var(--panel2);border:1px solid var(--line);border-bottom-width:2px;
+    border-radius:4px;padding:0 5px;font-size:11px}
+  @media (max-width:720px){.rail{width:150px}.inspector{width:190px}}
+</style>
+
+<header>
+  <h1>COEUR TMA de-array</h1>
+  <select id="slideSel" aria-label="slide">
+    <option value="G">COEUR_TMA_G · Bloc G</option>
+    <option value="H">COEUR_TMA_H · Bloc H</option>
+    <option value="STIC">CHUM_STIC_TMA · no map</option>
+  </select>
+  <div class="counts">
+    <div class="cell"><span>Cores kept</span><b id="cKept">–</b></div>
+    <div class="cell"><span>Expected punches</span><b id="cExp">300</b></div>
+    <div class="cell"><span>Δ to expected</span><b id="cDelta">–</b></div>
+  </div>
+</header>
+
+<main>
+  <nav class="rail">
+    <div class="grp">
+      <div class="lbl">Mode</div>
+      <button class="tool" id="mSelect" aria-pressed="true">Select / move <span class="k">V</span></button>
+      <button class="tool" id="mAdd">Add core <span class="k">A</span></button>
+    </div>
+    <div class="grp">
+      <div class="lbl">Selection</div>
+      <button class="tool" id="bMerge" disabled>Merge selected <span class="k">M</span></button>
+      <button class="tool" id="bSplit" disabled>Split in two <span class="k">S</span></button>
+      <button class="tool danger" id="bDelete" disabled>Remove <span class="k">⌫</span></button>
+      <button class="tool" id="bRestore" disabled>Restore <span class="k">R</span></button>
+    </div>
+    <div class="grp">
+      <div class="lbl">View</div>
+      <button class="tool" id="bLabels" aria-pressed="true">Labels <span class="k">L</span></button>
+      <button class="tool" id="bMapRef">Map reference</button>
+      <button class="tool" id="bFit">Reset view <span class="k">0</span></button>
+    </div>
+    <div class="grp">
+      <div class="lbl">Legend</div>
+      <div class="legend">
+        <span class="sw" style="color:var(--core)"><i></i>core</span>
+        <span class="sw" style="color:var(--flag)"><i></i>flag</span>
+        <span class="sw" style="color:var(--control)"><i></i>control</span>
+        <span class="sw" style="color:var(--fte)"><i></i>FTE</span>
+        <span class="sw" style="color:var(--removed)"><i></i>removed</span>
+      </div>
+    </div>
+  </nav>
+
+  <div class="canvas-wrap">
+    <svg id="svg" preserveAspectRatio="xMidYMid meet" aria-label="TMA core editing canvas">
+      <g id="scene">
+        <image id="bgimg" href="bg_G.png" x="0" y="0"></image>
+        <g id="coreLayer"></g>
+      </g>
+    </svg>
+
+    <aside class="inspector" id="inspector" hidden>
+      <h2 id="insTitle">Core</h2>
+      <div class="id" id="insId">–</div>
+      <div class="field">
+        <label>Status</label>
+        <div class="status-row" id="insStatus">
+          <button data-s="core">core</button>
+          <button data-s="flag">flag</button>
+          <button data-s="control">control</button>
+          <button data-s="fte">FTE</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Label / core name</label>
+        <input id="insLabel" type="text" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="field">
+        <label>Note (rank / patient / tissue)</label>
+        <input id="insNote" type="text" autocomplete="off" spellcheck="false" placeholder="e.g. rank 42 · patient ###">
+      </div>
+      <div class="meta" id="insMeta"></div>
+    </aside>
+
+    <aside class="mapref" id="mapref" hidden>
+      <button class="close" id="mapClose" aria-label="close">✕</button>
+      <h3 id="mapTitle">Bloc G — punch ranks</h3>
+      <img id="mapImg" alt="TMA rank map reference">
+    </aside>
+  </div>
+</main>
+
+<footer>
+  <span class="hint">drag&nbsp;empty = pan · wheel = zoom · click = select · shift-click = multi · drag core = move</span>
+  <span id="statusMsg"></span>
+  <span class="save-pill" id="savePill"><i></i><span id="saveTxt">local only</span></span>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  // ---- slide config (geometry only; core data comes from db) ---------------
+  const SLIDES = {
+    G:{tag:"G",xmin:114.9,ymin:45.2,dx:10117.7,dy:19017.5,expected:300,bg:"bg_G.png",mapref:"mapref_G.png"},
+    H:{tag:"H",xmin:362.0,ymin:204.5,dx:10527.0,dy:22683.2,expected:352,bg:"bg_H.png",mapref:"mapref_H.png"},
+    STIC:{tag:"STIC",xmin:77.9,ymin:5.2,dx:10718.5,dy:23081.8,expected:0,bg:"bg_STIC.png",mapref:null,addR:330}
+  };
+  let META = SLIDES.G;
+  const svg = document.getElementById('svg');
+  const scene = document.getElementById('scene');
+  const layer = document.getElementById('coreLayer');
+  const bg = document.getElementById('bgimg');
+
+  let cores = new Map();          // id -> {id,x,y,r,n,status,label,note}
+  let selected = new Set();
+  let mode = 'select';
+  let showLabels = true;
+  const view = {k:1, tx:0, ty:0};
+
+  // ---------- pan / zoom -----------------------------------------------------
+  function applyView(){ scene.setAttribute('transform', `translate(${view.tx} ${view.ty}) scale(${view.k})`); }
+  function clientToVB(e){
+    const p = svg.createSVGPoint(); p.x=e.clientX; p.y=e.clientY;
+    return p.matrixTransform(svg.getScreenCTM().inverse());
+  }
+  function clientToData(e){ const v=clientToVB(e); return {x:(v.x-view.tx)/view.k, y:(v.y-view.ty)/view.k}; }
+  function fit(){ view.k=1; view.tx=0; view.ty=0; applyView(); }
+
+  svg.addEventListener('wheel', e=>{
+    e.preventDefault();
+    const before = clientToData(e);
+    const f = Math.exp(-e.deltaY*0.0012);
+    const nk = Math.min(40, Math.max(0.6, view.k*f));
+    view.tx += (view.k-nk)*before.x; view.ty += (view.k-nk)*before.y; view.k=nk;
+    applyView();
+  }, {passive:false});
+
+  // ---------- pointer interaction -------------------------------------------
+  let drag=null;
+  svg.addEventListener('pointerdown', e=>{
+    if(e.button!==0) return;
+    svg.setPointerCapture(e.pointerId);
+    const d = clientToData(e);
+    const hit = pick(d);
+    if(mode==='add' && !hit){ addCore(d.x,d.y); return; }
+    if(hit){
+      if(e.shiftKey){ selected.has(hit)?selected.delete(hit):selected.add(hit); }
+      else if(!selected.has(hit)){ selected.clear(); selected.add(hit); }
+      drag={type:'core', id:hit, last:d, moved:false};
+      svg.classList.add('dragging');
+    } else {
+      if(!e.shiftKey) selected.clear();
+      drag={type:'pan', last:{x:e.clientX,y:e.clientY}};
+      svg.classList.add('dragging');
+    }
+    renderSel(); refreshInspector();
+  });
+  svg.addEventListener('pointermove', e=>{
+    if(!drag) return;
+    if(drag.type==='pan'){
+      const s=svg.getScreenCTM();
+      view.tx += (e.clientX-drag.last.x)/ (s.a);
+      view.ty += (e.clientY-drag.last.y)/ (s.d);
+      drag.last={x:e.clientX,y:e.clientY}; applyView(); return;
+    }
+    const d=clientToData(e);
+    const dx=d.x-drag.last.x, dy=d.y-drag.last.y;
+    const ids = selected.has(drag.id)?[...selected]:[drag.id];
+    ids.forEach(id=>{ const c=cores.get(id); if(c){c.x+=dx;c.y+=dy;} });
+    drag.last=d; drag.moved=true; renderCores();
+  });
+  svg.addEventListener('pointerup', e=>{
+    if(drag && drag.type==='core' && drag.moved){ [...selected].forEach(saveCore); }
+    svg.classList.remove('dragging'); drag=null;
+  });
+
+  function pick(d){
+    let best=null, bd=Infinity;
+    cores.forEach(c=>{
+      const dist=Math.hypot(c.x-d.x, c.y-d.y);
+      const rr=Math.max(c.r, 60/view.k);      // easier to grab when zoomed out
+      if(dist<rr && dist<bd){ bd=dist; best=c.id; }
+    });
+    return best;
+  }
+
+  // ---------- core operations -----------------------------------------------
+  let addSeq=0;
+  function newId(){ addSeq++; return `G-new${String(addSeq).padStart(2,'0')}`; }
+  function addCore(x,y){
+    const c={id:newId(),x,y,r:(META.addR||280),n:0,status:'core',label:'',note:''};
+    cores.set(c.id,c); selected.clear(); selected.add(c.id);
+    saveCore(c.id); renderCores(); renderSel(); refreshInspector();
+    flash('added '+c.id);
+  }
+  function mergeSelected(){
+    const ids=[...selected].filter(id=>cores.get(id));
+    if(ids.length<2) return;
+    const list=ids.map(id=>cores.get(id));
+    const keep=list[0];
+    const tot=list.reduce((a,c)=>a+(c.n||1),0)||1;
+    keep.x=list.reduce((a,c)=>a+c.x*(c.n||1),0)/tot;
+    keep.y=list.reduce((a,c)=>a+c.y*(c.n||1),0)/tot;
+    keep.r=Math.max(...list.map(c=>c.r));
+    keep.n=tot;
+    ids.slice(1).forEach(id=>{ cores.delete(id); removeCore(id); });
+    saveCore(keep.id);
+    selected=new Set([keep.id]);
+    renderCores(); renderSel(); refreshInspector(); flash('merged '+ids.length+' → '+keep.id);
+  }
+  function splitSelected(){
+    const id=[...selected][0]; const c=cores.get(id); if(!c) return;
+    const off=c.r*0.6||150;
+    c.x-=off; c.r=Math.max(150,c.r*0.75); c.n=Math.round((c.n||2)/2);
+    const c2={...c, id:newId(), x:c.x+off*2, label:'', note:''};
+    cores.set(c2.id,c2);
+    saveCore(id); saveCore(c2.id);
+    selected=new Set([id,c2.id]);
+    renderCores(); renderSel(); refreshInspector(); flash('split → '+id+' + '+c2.id);
+  }
+  function setStatus(st){
+    [...selected].forEach(id=>{ const c=cores.get(id); if(c){ c.status=st; saveCore(id);} });
+    renderCores(); refreshInspector();
+  }
+  function removeSelected(){ [...selected].forEach(id=>{const c=cores.get(id); if(c){c.status='removed'; saveCore(id);}}); renderCores(); refreshInspector(); updateCounts(); }
+  function restoreSelected(){ [...selected].forEach(id=>{const c=cores.get(id); if(c){c.status='core'; saveCore(id);}}); renderCores(); refreshInspector(); updateCounts(); }
+
+  // ---------- rendering ------------------------------------------------------
+  function renderCores(){
+    const frag=document.createDocumentFragment();
+    cores.forEach(c=>{
+      let g=document.getElementById('c_'+c.id);
+      const cls=`core st-${c.status}${selected.has(c.id)?' sel':''}`;
+      if(!g){
+        g=document.createElementNS('http://www.w3.org/2000/svg','g');
+        g.id='c_'+c.id;
+        const ring=document.createElementNS('http://www.w3.org/2000/svg','circle'); ring.setAttribute('class','ring');
+        const dot=document.createElementNS('http://www.w3.org/2000/svg','circle'); dot.setAttribute('class','dot'); dot.setAttribute('r',18);
+        const lab=document.createElementNS('http://www.w3.org/2000/svg','text'); lab.setAttribute('class','lab');
+        g.append(ring,dot,lab); frag.append(g);
+      }
+      g.setAttribute('class',cls);
+      const ring=g.querySelector('.ring'), dot=g.querySelector('.dot'), lab=g.querySelector('.lab');
+      ring.setAttribute('cx',c.x); ring.setAttribute('cy',c.y); ring.setAttribute('r',c.r);
+      dot.setAttribute('cx',c.x); dot.setAttribute('cy',c.y);
+      lab.setAttribute('x',c.x); lab.setAttribute('y',c.y - c.r - 40);
+      lab.setAttribute('font-size', 150);
+      lab.style.display = showLabels ? '' : 'none';
+      lab.textContent = c.label || c.id;
+    });
+    if(frag.childNodes.length) layer.append(frag);
+    // remove orphaned
+    [...layer.children].forEach(g=>{ const id=g.id.slice(2); if(!cores.has(id)) g.remove(); });
+    updateCounts();
+  }
+  function renderSel(){
+    cores.forEach(c=>{ const g=document.getElementById('c_'+c.id);
+      if(g) g.setAttribute('class',`core st-${c.status}${selected.has(c.id)?' sel':''}`); });
+    const n=[...selected].filter(id=>cores.get(id)).length;
+    document.getElementById('bMerge').disabled = n<2;
+    document.getElementById('bSplit').disabled = n!==1;
+    document.getElementById('bDelete').disabled = n<1;
+    document.getElementById('bRestore').disabled = n<1;
+  }
+  function updateCounts(){
+    let kept=0; cores.forEach(c=>{ if(c.status!=='removed') kept++; });
+    document.getElementById('cKept').textContent=kept;
+    const delta=kept-META.expected;
+    const el=document.getElementById('cDelta');
+    el.textContent=(delta>0?'+':'')+delta;
+    el.className = Math.abs(delta)<=3?'delta-ok':'delta-warn';
+  }
+
+  // ---------- inspector ------------------------------------------------------
+  const insp=document.getElementById('inspector');
+  function refreshInspector(){
+    const ids=[...selected].filter(id=>cores.get(id));
+    if(ids.length!==1){ insp.hidden=true; return; }
+    const c=cores.get(ids[0]); insp.hidden=false;
+    document.getElementById('insId').textContent=c.id;
+    document.getElementById('insLabel').value=c.label||'';
+    document.getElementById('insNote').value=c.note||'';
+    document.getElementById('insMeta').textContent=`x ${Math.round(c.x+META.xmin)} · y ${Math.round(c.y+META.ymin)} µm · ${c.n||0} cells · r ${Math.round(c.r)}`;
+    insp.querySelectorAll('#insStatus button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.s===c.status));
+  }
+  document.getElementById('insStatus').addEventListener('click',e=>{ const b=e.target.closest('button'); if(b) setStatus(b.dataset.s); });
+  document.getElementById('insLabel').addEventListener('input',e=>{ const id=[...selected][0]; const c=cores.get(id); if(c){c.label=e.target.value; renderCores(); debSave(id);} });
+  document.getElementById('insNote').addEventListener('input',e=>{ const id=[...selected][0]; const c=cores.get(id); if(c){c.note=e.target.value; debSave(id);} });
+
+  // ---------- toolbar --------------------------------------------------------
+  function setMode(m){ mode=m;
+    document.getElementById('mSelect').setAttribute('aria-pressed', m==='select');
+    document.getElementById('mAdd').setAttribute('aria-pressed', m==='add');
+    svg.classList.toggle('mode-add', m==='add');
+  }
+  document.getElementById('mSelect').onclick=()=>setMode('select');
+  document.getElementById('mAdd').onclick=()=>setMode('add');
+  document.getElementById('bMerge').onclick=mergeSelected;
+  document.getElementById('bSplit').onclick=splitSelected;
+  document.getElementById('bDelete').onclick=removeSelected;
+  document.getElementById('bRestore').onclick=restoreSelected;
+  document.getElementById('bFit').onclick=fit;
+  document.getElementById('bLabels').onclick=e=>{ showLabels=!showLabels;
+    e.currentTarget.setAttribute('aria-pressed',showLabels); renderCores(); };
+  window.addEventListener('keydown',e=>{
+    if(/input|textarea/i.test(e.target.tagName)) return;
+    const k=e.key.toLowerCase();
+    if(k==='v')setMode('select'); else if(k==='a')setMode('add');
+    else if(k==='m')mergeSelected(); else if(k==='s')splitSelected();
+    else if(k==='l')document.getElementById('bLabels').click();
+    else if(k==='0')fit(); else if(k==='r')restoreSelected();
+    else if(k==='backspace'||k==='delete'){e.preventDefault();removeSelected();}
+    else if(k==='escape'){selected.clear();renderSel();refreshInspector();}
+  });
+
+  function flash(m){ const el=document.getElementById('statusMsg'); el.textContent=m;
+    clearTimeout(flash.t); flash.t=setTimeout(()=>el.textContent='',2200); }
+
+  // ---------- persistence (artifact db · single state doc) ------------------
+  let db=null, doc=null;
+  const pill=document.getElementById('savePill'), pillTxt=document.getElementById('saveTxt');
+  function setPill(state,txt){ pill.className='save-pill '+state; pillTxt.textContent=txt; }
+  let saveTimer=null, savedRev=0;
+  function serialize(){ return [...cores.values()].map(c=>({id:c.id,x:c.x,y:c.y,r:c.r,n:c.n||0,
+    status:c.status,label:c.label||'',note:c.note||''})); }
+  function saveAll(){
+    if(!doc){ return; }
+    setPill('saving','saving…'); const rev=++savedRev;
+    doc.set({tag:META.tag, expected:META.expected, cores:serialize(), rev, updatedAt:Date.now()})
+       .then(()=>{ if(rev===savedRev) setPill('ok','all changes saved'); })
+       .catch(()=>setPill('off','save failed — retry an edit'));
+  }
+  function scheduleSave(){ clearTimeout(saveTimer); saveTimer=setTimeout(saveAll, 350); }
+  // legacy call sites funnel here:
+  function saveCore(){ scheduleSave(); }
+  function removeCore(){ scheduleSave(); }
+  function debSave(){ scheduleSave(); }
+
+  function seedFrom(list){ cores.clear();
+    list.forEach(c=>cores.set(c.id,{id:c.id,x:c.x,y:c.y,r:c.r,n:c.n,status:c.status||'core',label:c.label||'',note:c.note||''}));
+    renderCores(); renderSel();
+  }
+
+  // ---- slide switching + map reference -------------------------------------
+  let unsub=null;
+  function applySlideChrome(){
+    svg.setAttribute('viewBox', `0 0 ${META.dx} ${META.dy}`);
+    bg.setAttribute('href', META.bg); bg.setAttribute('width', META.dx); bg.setAttribute('height', META.dy);
+    document.getElementById('cExp').textContent = META.expected;
+    document.getElementById('slideSel').value = META.tag;
+    const hasMap = !!META.mapref;
+    document.getElementById('bMapRef').hidden = !hasMap;
+    if(hasMap){
+      document.getElementById('mapImg').src = META.mapref;
+      document.getElementById('mapTitle').textContent = `Bloc ${META.tag} — punch ranks`;
+    } else { document.getElementById('mapref').hidden = true; }
+  }
+  async function loadSlide(tag){
+    if(saveTimer){ clearTimeout(saveTimer); saveAll(); }   // flush pending to current doc
+    if(unsub){ try{unsub();}catch(_){} unsub=null; }
+    META = SLIDES[tag];
+    cores.clear(); selected.clear(); savedRev=0;
+    layer.innerHTML=''; applySlideChrome(); fit(); renderCores(); renderSel(); refreshInspector();
+    if(!db){ return; }
+    doc = db.doc('state/'+tag);
+    setPill('saving','loading '+tag+'…');
+    try{
+      const snap=await doc.get(); const data=snap&&snap.data?snap.data():null;
+      if(data&&Array.isArray(data.cores)&&data.cores.length){
+        seedFrom(data.cores); savedRev=data.rev||0;
+        setPill('ok','loaded '+data.cores.length+' cores'); flash('Bloc '+tag+': '+data.cores.length+' cores');
+      } else { setPill('saving','waiting for seed…'); flash('Bloc '+tag+': waiting for detection seed'); }
+      unsub = doc.onSnapshot(s=>{ const d=s&&s.data?s.data():null;
+        if(!drag && d && Array.isArray(d.cores) && (d.rev||0)>=savedRev){ seedFrom(d.cores); savedRev=d.rev||0; refreshInspector(); }
+      });
+    }catch(err){ setPill('off','db error'); flash('db read error'); }
+  }
+  document.getElementById('slideSel').addEventListener('change', e=>loadSlide(e.target.value));
+  const mapRef=document.getElementById('mapref');
+  document.getElementById('bMapRef').onclick=()=>{ mapRef.hidden=!mapRef.hidden;
+    document.getElementById('bMapRef').setAttribute('aria-pressed', !mapRef.hidden); };
+  document.getElementById('mapClose').onclick=()=>{ mapRef.hidden=true;
+    document.getElementById('bMapRef').setAttribute('aria-pressed', false); };
+
+  async function boot(){
+    applySlideChrome(); fit(); flash('connecting…');
+    try{ db = window.claude && claude.use ? await claude.use('db') : null; }catch(_){ db=null; }
+    if(!db){ setPill('off','offline · edits not saved'); flash('DB unavailable — open in Claude to save'); return; }
+    loadSlide('G');
+  }
+  boot();
+})();
+</script>

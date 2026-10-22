@@ -7,8 +7,8 @@ PURPOSE
     layers["counts"], select the top 4000 highly variable genes (seurat_v3,
     batch-aware by sample_id), subset to them, then normalize_total(1e4)+log1p so
     X holds log-normalised values and layers["counts"] the raw counts (standard
-    scvi-tools convention). Produces the HVG object used by all integration
-    methods (steps 05a–05e) and the benchmark (step 06).
+    scvi-tools convention). Produces the HVG object read by scVI (05a) and
+    scANVI (05b).
 
 INPUTS
     data_root/2026_final_atlas/processed/atlas_concatenated_filtered.h5ad

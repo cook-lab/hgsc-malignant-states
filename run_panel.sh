@@ -8,8 +8,8 @@
 # script newly wrote/updated under OUTPUT_ROOT.
 #
 #   Usage:  run_panel.sh <relpath-from-repo-root> [script args...]
-#   e.g.    run_panel.sh figures/figure2/03_atlas_volcano_secA_secB.py
-#           run_panel.sh figures/figure4/02_xenium_whole_tissue_snapshot.R all
+#   e.g.    run_panel.sh figures/figure2/04_fig2g_pseudobulk_volcano.py
+#           run_panel.sh figures/figure7/02_fig7abcd_tma_survival_row.R
 #
 # Design notes:
 #   - OUTPUT_ROOT is forced ABSOLUTE so outputs land in repo/output regardless
@@ -25,16 +25,16 @@ set -uo pipefail
 # Repo root = directory containing this script (portable; no hardcoded location).
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Interpreters: override PY/RS to point at a specific env; otherwise use what's on PATH
-# (activate the project conda env, and ensure an R 4.5.x Rscript is on PATH, first).
+# (activate the project conda env, and ensure an R 4.4.x Rscript is on PATH, first).
 PY="${PY:-python}"
 RS="${RS:-Rscript}"
 TIMEOUT_SECS="${PANEL_TIMEOUT:-3600}"
 
 # Data location: override DATA_ROOT / ORGANOIDS_ROOT to point at a mounted drive or a
 # Zenodo download (mirrors the ${VAR:-default} contract in config/config.yml).
-export DATA_ROOT="${DATA_ROOT:-/Volumes/Nosepass/Epitype_Project}"
+export DATA_ROOT="${DATA_ROOT:-/path/to/deposit}"
 export OUTPUT_ROOT="${OUTPUT_ROOT:-$REPO/output}"
-export ORGANOIDS_ROOT="${ORGANOIDS_ROOT:-$DATA_ROOT/2026_organoids}"
+export ORGANOIDS_ROOT="${ORGANOIDS_ROOT:-$DATA_ROOT/202603_organoids}"
 export PYTHONPATH="$REPO"
 export MPLBACKEND="Agg"
 

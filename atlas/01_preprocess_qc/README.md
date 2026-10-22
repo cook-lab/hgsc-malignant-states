@@ -1,86 +1,83 @@
-# atlas/01_preprocess_qc — preprocessing, QC, integration (raw → integrated atlas)
+# atlas/01_preprocess_qc: data preparation, QC and integration
 
-The **full preprocessing chain from raw per-study data through the integrated atlas object**
-that is the entry point for all downstream analysis. The integration sub-sequence (steps 03–07)
-consists of the **official cluster scripts**, path-centralised into this repo. The
-scVI/scANVI/MrVI/SysVI/Harmony steps are GPU-heavy and **optional to re-run**: the integrated
-atlas object is deposited as a config entry object, so downstream work can start from it.
+This stage turns the raw count matrices of the 13 public studies into the integrated atlas object
+`hgsc_atlas_scanvi.h5ad`. The steps are:
+1. prepare each study
+2. concatenate the studies on 14,470 shared genes, then cell QC and Scrublet doublet removal
+3. HVG selection
+4. CellAssign
+5. scVI → scANVI integration
+6. a second doublet pass and the atlas UMAP
 
-## Ordered scripts
+The stage is heavy: steps 4–6 of the run order need a GPU, and steps 3 and 7 a high-memory machine. The outputs are
+deposited, so no figure needs this stage to be re-run.
 
-| # | Script | Official source | Inputs | Outputs |
-|---|--------|-----------------|--------|---------|
-| 01 | `01_dataprep.py` | (repo) | per-study raw matrices (`DATA_ROOT/2026_final_atlas/raw/<study>/`), `atlas_metadata.xlsx` | harmonised per-study h5ad → `processed/<study>.h5ad` |
-| 02 | `02_concat_qc_doublets.py` | (repo) | 13 per-study h5ad | `processed/atlas_concatenated_filtered.h5ad` (per-cell QC: total_counts≥500, n_genes≥300, sample≥500 cells; **Scrublet < 0.3**) + QC violins. **This IS the QC step.** |
-| 03 | `03_preprocess_hvg.py` | `01_preprocess.py` | `atlas_concatenated_filtered.h5ad` | `…/integration/anndata/preprocessed.h5ad` (HVG 4000 seurat_v3 batch=sample_id, subset; X=lognorm, `layers["counts"]`=raw) |
-| 04 | `04_cellassign.py` | `02_cellassign.py` | `atlas_concatenated_filtered.h5ad`, `shared/cellassign_markers_v3.csv` (81×16) | `…/integration/cellassign/{predictions,probabilities}.csv` + QC plots |
-| 05a | `05a_integrate_scvi.py` | `03a_integrate_scvi.py` | `preprocessed.h5ad`, predictions | `…/integration/models/scvi/`, `…/embeddings/scvi/embedding.npz`. **GPU; comparison + base for scANVI** |
-| 05b | `05b_integrate_scanvi.py` | `03b_integrate_scanvi.py` | `preprocessed.h5ad`, predictions, scvi model | `…/integration/models/scanvi/`, `…/embeddings/scanvi/embedding.npz` (obsm `X_scanvi`). **GPU; ★ SELECTED METHOD** |
-| 05c | `05c_integrate_mrvi.py` | `03c_integrate_mrvi.py` | `preprocessed.h5ad`, predictions | `…/embeddings/mrvi/embedding.npz` (u + z). **GPU; comparison** |
-| 05d | `05d_integrate_sysvi.py` | `03d_integrate_sysvi.py` | `preprocessed.h5ad`, predictions | `…/embeddings/sysvi/embedding.npz`. **GPU; comparison** |
-| 05e | `05e_integrate_harmony.py` | `03e_integrate_harmony.py` | `preprocessed.h5ad`, predictions | `…/embeddings/harmony/embedding.npz`. **CPU; comparison** |
-| 06 | `06_benchmark.py` | `04_benchmark.py` | `preprocessed.h5ad`, predictions, all `embeddings/<m>/embedding.npz` | `…/integration/benchmark/metrics_{raw,scaled}.csv` + summary plot (scib-metrics; basis for selecting scANVI) |
-| 07 | `07_finalize.py` | `05_finalize.py` | `atlas_concatenated_filtered.h5ad`, predictions, `embeddings/<method>/embedding.npz` | `…/integration/anndata/integrated_<method>.h5ad` (default `--method scanvi` → `integrated_scanvi.h5ad`, obsm `X_scanvi`, normalize/log1p base2, UMAP min_dist=0.3, Leiden res=0.2) |
-| 08 | `08_refilter_umap.py` | (repo; was `03b`) | `integrated_scanvi.h5ad` (step 07 / deposited 20260213 run) | `obj("atlas_scanvi")` = `hgsc_atlas_scanvi.h5ad` (post-integration Scrublet<0.25, neighbours on `X_scanvi`, UMAP min_dist=0.2) + QC UMAPs |
-| 09 | `09_atlas_qc_review.py` | (repo; was `04`) | `obj("atlas_scanvi")` | per-study QC summary CSVs + QC histograms/UMAPs |
-| 10 | `10_umap_suite.py` | (repo; was `05`) | `obj("atlas_scanvi")` | 9 publication metadata UMAP SVGs |
+## Run order
 
-The integration sub-sequence is **02 → 03 → 04 → {05a–05e} → 06 → 07**. **scANVI (05b) is the
-SELECTED method** carried into the manuscript; scVI/MrVI/SysVI/Harmony + the `06_benchmark`
-table are the **method comparison** (SF2 / Methods). All five integration methods read the same
-`preprocessed.h5ad` and CellAssign `predictions.csv`. Integration-chain intermediates
-(`preprocessed.h5ad`, CellAssign CSVs, per-method `models/` + `embeddings/`, `benchmark/`,
-`integrated_<method>.h5ad`) are **regenerated** under `output_root/01_preprocess_qc/integration/`
-— not deposited primary inputs. The QC/post-integration steps (`02`, `08`–`10`) write under
-`output_root/01_preprocess_qc/`.
+Paths without a root are under `$DATA_ROOT/2026_final_atlas/`. `…/integration/` stands for
+`$OUTPUT_ROOT/01_preprocess_qc/integration/`.
 
-## These are the official scripts (optional GPU re-run)
+| Step | Script | Reads | Writes | Used by |
+|---|---|---|---|---|
+| 1 | `as_run/01_dataprep.ipynb` | `raw/<study>/` (per-study count files); `atlas_metadata.xlsx` (curated sample sheet) | `processed/<study>.h5ad`, one per study (13) | step 2; `figures/_prep/nath2021_fix.py` (`nath_2021.h5ad`) |
+| 2 | `as_run/02_concat_qc_doublets.ipynb` | `processed/<study>.h5ad` | `processed/atlas_concat_counts_only_X.h5ad` (2,731,632 cells, before QC); `processed/atlas_concatenated_filtered.h5ad` (2,326,532 cells, after QC and Scrublet) | steps 3, 4, 7; Figure S1 (`figures/supplementary/00_figS1_extract_atlas_obs.py`) |
+| 3 | `03_preprocess_hvg.py` | `processed/atlas_concatenated_filtered.h5ad` | `…/integration/anndata/preprocessed.h5ad` (4,000 seurat_v3 HVGs, batch = sample) | steps 5, 6 |
+| 4 | `04_cellassign.py` (+ `shared/cellassign_markers_v3.csv`: 82 genes × 16 types) | `processed/atlas_concatenated_filtered.h5ad` | `…/integration/cellassign/{predictions,probabilities}.csv` | steps 6, 7 |
+| 5 | `05a_integrate_scvi.py` | `preprocessed.h5ad` | `…/integration/models/scvi/`; `…/integration/embeddings/scvi/embedding.npz` (not read downstream) | step 6 (scANVI starts from this scVI model) |
+| 6 | `05b_integrate_scanvi.py` | `preprocessed.h5ad`; CellAssign predictions (the scANVI seed labels); the scVI model | `…/integration/models/scanvi/`; `…/integration/embeddings/scanvi/embedding.npz` | step 7 |
+| 7 | `07_finalize.py --method scanvi` | `processed/atlas_concatenated_filtered.h5ad`; CellAssign predictions; the scANVI embedding | `…/integration/anndata/integrated_scanvi.h5ad`, with `obsm["X_scanvi"]` and obs `celltype_pred`, `celltype_probability` and `celltype_confident` from CellAssign | step 8 |
+| 8 | `as_run/03b_refilter_umap.py` | `pre-processing and integration/20260213_integration/output/anndata/integrated_scanvi.h5ad` (the deposited output of steps 3–7) | `hgsc_atlas_scanvi.h5ad` (config `atlas_scanvi`) | `atlas/02_annotation` |
 
-Steps 03–07 are the **official cluster scripts** (`01_preprocess.py` … `05_finalize.py`),
-migrated verbatim with only the hardcoded cluster paths
-(`/home/snersesi/projects/def-dcook/active/hgsc_atlas/...`) replaced by central config.
-**Analytical parameters were not altered.** Re-running the scVI/scANVI/MrVI/SysVI/CellAssign
-steps needs a GPU and is computationally expensive; it is **not required** to reproduce
-downstream results because the integrated atlas object is **deposited as a config entry object**
-(`obj("atlas_scanvi")`). The full code (all five methods + benchmark) is included so every step
-from raw data is open to scrutiny and can be independently re-executed. (Minor cosmetic
-cleanups: `07_finalize` had an accidental duplicate `sc.pp.neighbors` call — idempotent,
-collapsed to one — and corrupted emoji in some print strings, cleaned; no logic changed.)
+**QC rules.**
+- Step 2 keeps cells with a study label from samples whose `histological_subtype` is Serous. It removes cells with
+  fewer than 500 UMIs or fewer than 300 genes, then samples with fewer than 500 cells. Scrublet then runs per sample
+  (samples with at least 1,000 cells; expected doublet rate 0.8% per 1,000 cells; seed 42). Cells with a score of 0.3
+  or more are removed, and samples left with fewer than 500 cells are removed again.
+- Step 8 removes the cells Scrublet called doublets and cells with a Scrublet score of 0.25 or more. It then
+  recomputes neighbours (n = 10) and the UMAP (min_dist 0.2) on `X_scanvi`. The 0.25 cut is the line drawn in
+  Figure S1c.
+- Artifact clusters are removed later, at level-1 annotation (`../02_annotation`).
 
-## Resolved provenance (formerly open reconciliation flags)
+**Cell-type labels.** `celltype_pred` and `celltype_probability` in the final atlas are the CellAssign label and
+probability that step 7 copies from step 4. Figure S4a plots them.
 
-The earlier reconciliation flags are now **RESOLVED** by the official scripts:
+**Paths.**
+- Steps 1, 2 and 8 are `as_run/` copies and use the paths of the atlas project folder (`…/2026_final_atlas/raw/`,
+  `processed/` and `atlas_metadata.xlsx`; the Hornburg 2021 cell reads `…/2026_final_atlas/hornburg/EGAF*/`). In the
+  deposit these sit under `pre-processing and integration/` (Hornburg 2021 in `raw/hornburg_2021/`).
+- Steps 3, 4 and 7 read `$DATA_ROOT/2026_final_atlas/processed/atlas_concatenated_filtered.h5ad`. The deposited copy
+  is `pre-processing and integration/processed/atlas_concatenated_filtered.h5ad`; link it to `processed/` first.
+- Steps 3–7 write under `$OUTPUT_ROOT/01_preprocess_qc/integration/`. The run that produced the deposit is
+  `pre-processing and integration/20260213_integration/output/`; step 8 reads its `anndata/integrated_scanvi.h5ad`.
 
-- **QC / Scrublet placement — RESOLVED.** The official `01_preprocess.py` and `02_cellassign.py`
-  both read `atlas_concatenated_filtered.h5ad` directly, i.e. the output of
-  `02_concat_qc_doublets.py`. So per-cell QC + per-sample **Scrublet < 0.3** (the Methods'
-  2,398,571 → 2,326,532 filter) IS the QC step of the integration chain — it sits between
-  concatenation (02) and HVG/integration (03+). No missing step.
-- **Object-naming / pipeline-version bridge — RESOLVED.** `07_finalize.py --method scanvi` writes
-  `integrated_scanvi.h5ad` with obsm key **`X_scanvi` (lowercase)** — exactly what
-  `08_refilter_umap.py` reads (`sc.pp.neighbors(..., use_rep="X_scanvi")`). Step 08 then applies
-  the stricter Scrublet < 0.25 + UMAP and writes the deposited `hgsc_atlas_scanvi.h5ad`
-  (`obj("atlas_scanvi")`). The chain is continuous: 07 (`integrated_scanvi.h5ad`) → 08
-  (`hgsc_atlas_scanvi.h5ad`).
-- **CellAssign marker matrix — RESOLVED.** The official `02_cellassign.py` uses
-  `shared/cellassign_markers_v3.csv` (**81 genes × 16 cell types**, identical to the staged
-  official copy). This is the single canonical marker matrix; the older 53×11
-  `cellassign_markers.csv` was an earlier vintage and has been removed.
-- **Integration method — RESOLVED.** Five methods are run and benchmarked (scib-metrics, step 06);
-  **scANVI is selected** for the manuscript (`07_finalize` default `--method scanvi`).
+**Integration in the paper.** The paper uses scVI → scANVI with CellAssign seed labels. `07_finalize.py` ran with
+`--method scanvi`; its other `--method` choices are not used.
 
-## Conventions applied
+**Environments.**
+- Steps 1–2 ran in E3 (Python 3.12.3). They use Scrublet as built into scanpy, and mygene, which needs network access.
+- Steps 3–7 ran in E4, a GPU cluster with scvi-tools 1.4.1. Steps 4–7 set their seed from `config.yml` (42).
+- Step 8 ran in E2 (Python 3.12.9).
 
-Central config for all paths: the chain's raw input is
-`path("data_root", "2026_final_atlas", "processed", "atlas_concatenated_filtered.h5ad")` (the
-step-02 output); markers → `shared/cellassign_markers_v3.csv`; all regenerated
-intermediates/models/embeddings → `output_root/01_preprocess_qc/integration/`. Header docstrings
-(purpose / INPUTS / OUTPUTS / runtime tier / manuscript role) added to each migrated script.
-Analytical parameters of the official scripts preserved EXACTLY. `matplotlib` forced to the Agg
-backend in the migrated scripts (headless cluster QC plotting).
+GPU training is not bit-identical across hardware, so the deposited objects are the reference for everything
+downstream.
 
-## Figures supported
+## `as_run/` and the cluster scripts
 
-QC/overview substrate only. SF1 (per-study QC violins), SF2 (integration benchmark + UMAPs),
-Fig 1A (atlas UMAP) and SF3 (metadata UMAPs) are rendered by per-panel scripts in `figures/`
-from `obj("atlas_scanvi")` / `obj("atlas_final")`.
+`as_run/` holds trimmed copies of what ran in the atlas project folder `202601_final_atlas`. The cells and code that
+wrote the deposited files are kept as they ran. QC plots, check and inspection cells, empty cells and two cells whose
+files a later cell overwrote (the first Nath 2021 loader and the first Vázquez-García write) were removed, and the
+notebook outputs were cleared. Each copy opens with a note on what was removed. The untrimmed notebooks and script
+stay in `202601_final_atlas`. The copies keep that project's paths.
+
+In `01_dataprep.ipynb` the "new nath" cell stopped with an error after the concatenation. The next cell repeats its
+metadata merge and save, and that save wrote the deposited `nath_2021.h5ad`. The Hornburg 2021 cell has no execution
+count in the notebook, but it is the only code that writes `hornburg_2021.h5ad`.
+
+Steps 3–7 have no `as_run/` copy: the files in this folder are the scripts that ran on the GPU cluster, with their
+paths resolved through `config/` and their QC plots, metadata JSON and UMAP previews removed. They have not been
+re-run from this repository.
+
+## Missing code
+
+None for this stage. The 13 public datasets were downloaded from their accessions (Table S1) into
+`pre-processing and integration/raw/<study>/`; no script does this.

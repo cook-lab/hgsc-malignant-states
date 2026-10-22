@@ -8,18 +8,21 @@
 #   neg_pct <= 5%, cell area 10–500 um^2. Lenient — removes only clear
 #   technical artifacts (neg controls ~0%, no bimodality).
 #
-# COHORT PIN: operates over sfe_tma + the 8 published whole tissues.
+# SAMPLES: sfe_names_all (00_setup.R): TMA A (sfe_tma), the config
+#   cohort.tma_new arrays (TMA B blocks G and H) and the 8 whole tissues.
 #
 # INPUTS:
-#   - <sfe_dir>/sfe_tma, <sfe_dir>/sfe_<wt>  (raw SFEs)
+#   - <sfe_dir>/<sfe_names_all>  (raw SFEs from spatial/01_build_sfe)
 #
 # OUTPUTS:
 #   - <sfe_dir>/sfe_*   updated in place (controls removed; logcounts +
 #       logcounts_area assays added; HDF5-backed via _v2 swap)
-#   - <output_root>/03_04_qc/filtering_summary.csv
+#   - <output_root>/03_04_qc/filtering_summary.csv  (cells and genes before /
+#       after QC per SFE; record of the step)
 #
-# MANUSCRIPT PANEL(S): QC backend; produces the normalized SFEs consumed by
-#   annotation (06_annotation.R) and all downstream spatial analyses.
+# MANUSCRIPT PANEL(S): Methods (Xenium cell QC; 477-gene panel); produces the
+#   normalized SFEs read by spatial/03_annotation_polarization/01_annotation_singler.R
+#   and every later Xenium step (Figs 4–7, Figures S11–S18, Tables S8–S11).
 #
 # RUNTIME TIER: heavy
 # ============================================================================
@@ -42,7 +45,7 @@ for (nm in names(THRESH)) message("  ", nm, " = ", THRESH[[nm]])
 
 # ── 2. Enumerate SFE directories ──────────────────────────────────────────
 
-sfe_names <- sfe_names_all   # sfe_tma + published 8 whole tissues (cohort PIN)
+sfe_names <- sfe_names_all   # TMA A + cohort.tma_new arrays + the 8 whole tissues
 
 # ── 3. Process each SFE ───────────────────────────────────────────────────
 

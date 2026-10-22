@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 """
-Atlas 01 — Step 05b: scANVI integration  ===  SELECTED METHOD (manuscript)
+Atlas 01 — Step 05b: scANVI integration (the atlas integration of the manuscript)
 
 PURPOSE
     Build scANVI from the trained scVI model (05a) using the CellAssign labels
-    (04), fine-tune semi-supervised, and emit the latent embedding. **This is the
-    integration method SELECTED for the manuscript** (chosen among the five
-    benchmarked in step 06). Its embedding (obsm key "X_scanvi", lowercase) is the
-    one carried into the final object and consumed by 08_refilter_umap.
+    (04) as seed labels, fine-tune semi-supervised, and emit the latent
+    embedding. This is the integration the manuscript uses (scVI → scANVI). Its
+    embedding becomes obsm "X_scanvi" (lowercase) in the object written by
+    07_finalize, which as_run/03b_refilter_umap.py reads.
 
 INPUTS
     output_root/01_preprocess_qc/integration/anndata/preprocessed.h5ad   (step 03)
@@ -16,21 +16,23 @@ INPUTS
 
 OUTPUTS
     output_root/01_preprocess_qc/integration/models/scanvi/
-    output_root/01_preprocess_qc/integration/embeddings/scanvi/embedding.npz (+ metadata.json, umap_preview.png)
+    output_root/01_preprocess_qc/integration/embeddings/scanvi/embedding.npz
 
 RUNTIME TIER
     heavy — GPU. scANVI fine-tuning (max_epochs=800, early stopping). OPTIONAL re-run.
 
 MANUSCRIPT ROLE
-    SELECTED integration. Produces obsm["X_scanvi"], the embedding underlying the
-    atlas UMAP / clustering (Fig 1A, SF2/SF3) and the input to 08_refilter_umap.
+    The atlas integration. Its embedding (obsm["X_scanvi"]) underlies the atlas
+    UMAP and clustering (Fig 1a; Figures S2, S3) and is the input to
+    as_run/03b_refilter_umap.py.
 
 NOTE
     AUTHORITATIVE official cluster script (03b_integrate_scanvi.py). Analytical
     params preserved EXACTLY (from_scvi_model, unlabeled_category="Unknown",
     max_epochs=800, early stop on elbo_validation, plan_kwargs lr=2e-4 /
     weight_decay=1e-4, gradient_clip_val=1.0). Only the cluster paths were
-    centralised.
+    centralised; the cluster script's metadata JSON and QC UMAP preview are not
+    included.
 """
 import sys
 from pathlib import Path
@@ -59,12 +61,7 @@ import torch
 
 scvi.settings.seed = SEED  # seed numpy/torch/scvi — best-effort determinism (GPU training
 # is not guaranteed bit-reproducible; deposited integrated object is the trust boundary)
-import json
 import os
-from datetime import datetime
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 
 # Create output directories
 os.makedirs(f"{OUTPUT_DIR}/models/scanvi", exist_ok=True)
@@ -150,38 +147,6 @@ np.savez_compressed(
     obs_names=adata.obs_names.to_numpy()
 )
 
-# Save metadata
-metadata = {
-    "method": "scANVI",
-    "date": datetime.now().isoformat(),
-    "n_cells": int(adata.n_obs),
-    "n_genes": int(adata.n_vars),
-    "n_batches": int(adata.obs['sample_id'].nunique()) if 'sample_id' in adata.obs else None,
-    "n_latent": scanvi.module.n_latent,
-    "labels_key": LABEL_KEY,
-    "n_cell_types": int(adata.obs[LABEL_KEY].nunique()),
-    "scvi_tools_version": scvi.__version__
-}
-
-with open(f"{OUTPUT_DIR}/embeddings/scanvi/metadata.json", "w") as f:
-    json.dump(metadata, f, indent=2)
-
-# Quick UMAP preview for QC
-print("\n🗺️  Generating UMAP preview...")
-adata.obsm["X_scanvi"] = X_scanvi
-sc.pp.neighbors(adata, use_rep="X_scanvi")
-sc.tl.umap(adata)
-
-fig, axes = plt.subplots(1, 2, figsize=(16, 7))
-sc.pl.umap(adata, color=LABEL_KEY, ax=axes[0], show=False, legend_loc='right margin')
-axes[0].set_title("scANVI: UMAP colored by cell type")
-sc.pl.umap(adata, color='sample_id', ax=axes[1], show=False, legend_loc='on data', legend_fontsize=6)
-axes[1].set_title("scANVI: UMAP colored by batch")
-plt.tight_layout()
-plt.savefig(f"{OUTPUT_DIR}/embeddings/scanvi/umap_preview.png", dpi=150)
-plt.close()
-
 print("\n✅ scANVI integration complete!")
 print(f"   Model: {MODEL_DIR}")
 print(f"   Embedding: {EMBEDDING_NPZ}")
-print(f"   Preview: {OUTPUT_DIR}/embeddings/scanvi/umap_preview.png")

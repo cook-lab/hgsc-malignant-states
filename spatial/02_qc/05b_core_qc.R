@@ -1,12 +1,13 @@
 # ============================================================================
 # 05b_core_qc.R — TMA core QC: annotation-level outlier detection
 # ----------------------------------------------------------------------------
-# PURPOSE: Flag non-representative tumour cores on the merged TMA SFE and emit
-#   the per-core QC table + per-patient core-status table that 06_filter_tma.R
-#   consumes to build sfe_tma_filtered (the canonical TMA entry-point). Flags:
+# PURPOSE: Flag non-representative tumour cores of a TMA array and write the
+#   per-core QC table that spatial/02_qc/06b_final_tma_cores.py reads to build
+#   the final TMA core set. Flags:
 #     - flag_small: < 200 cells
 #     - flag_low_epi: < 10% epithelial
-#     - flag_low_confidence: median SingleR score < cohort p5 OR > 10% pruned
+#     - flag_low_confidence: median SingleR score < p5 of the cores in the run
+#       OR > 10% pruned
 #     - flag_composition_outlier: Mahalanobis distance on CLR-transformed 18-type
 #       composition exceeds the chi-sq p<0.01 threshold
 #     - flag_discordant_pair: within-patient core pair with JSD > p90 OR
@@ -15,28 +16,31 @@
 #   Fully deterministic (quantiles / Mahalanobis / JSD — no RNG).
 #
 # INPUTS:
-#   - <sfe_dir>/sfe_tma   (load_sfe; unfiltered merged TMA, carrying cell_label,
-#     singler_label/score/pruned, core_id, sample_type, patient_id)
+#   - the SFE(s) named in CORE_QC_TMAS (load_sfe; default sfe_tma), carrying
+#     singler_label/score/pruned, polarization_UCell, core_id, sample_type,
+#     patient_id and the cell_label column (read, then replaced by the SingleR
+#     labels when CORE_QC_LABELS=singler)
+#
+# FINAL RUN (2026-10-19, author): one run per array with the same method and SingleR labels
+#   (CORE_QC_LABELS=singler, the default): CORE_QC_TMAS=sfe_tma | sfe_COEUR_TMA_G | sfe_COEUR_TMA_H,
+#   CORE_QC_OUT_TAG=_singler_<array>. 06b_final_tma_cores.py combines the three into the one TMA core set
+#   used by every manuscript panel.
 #
 # OUTPUTS (<output_root>/07_core_qc/):
-#   - core_qc_summary.csv      (per-core metrics, flags, recommendation)
-#   - patient_core_status.csv  (per-patient pass/review/excluded core counts)
-#   - patient_concordance.csv  (within-patient pairwise core concordance)
+#   - core_qc_summary<CORE_QC_OUT_TAG>.csv  (per-core metrics, flags, recommendation;
+#       final run: core_qc_summary_singler_{tma,COEUR_TMA_G,COEUR_TMA_H}.csv)
 #
-# MANUSCRIPT PANEL(S): none directly — produces the core-exclusion list behind
-#   sfe_tma_filtered (Fig 4-7 TMA panels, SF10B/SF12). Runs BEFORE 06_filter_tma.R.
-#   The published cohort was built from the DEPOSITED copy of these tables;
-#   this script reproduces them deterministically.
+# MANUSCRIPT PANEL(S): none directly — the core-QC flags behind the final TMA
+#   core set (TMA arms of Figs 4–7, Figures S12–S15, Tables S8 and S11). Runs
+#   after spatial/03_annotation_polarization/ (needs the SingleR labels and the
+#   polarization scores).
 # RUNTIME TIER: moderate
 #
-# Migrated from 2026_final_xenium_analysis/scripts/sandbox/core_qc.Rmd.
-# Analytical logic preserved verbatim; paths routed through central config; the
-# notebook's plotting / HTML / interactive datatable chunks are dropped (only
-# the CSV-producing logic is retained). Epithelial label "Transitioning" is
+# Paths come from the central config. The epithelial label "Transitioning" is
 # standardized to "Intermediate" on read, before any composition counting.
 # ============================================================================
 
-# --- Config + shared setup (replaces hardcoded /Volumes/CookLab/Sarah paths) ---
+# --- Config + shared setup ---------------------------------------------------
 here <- tryCatch(dirname(sys.frame(1)$ofile), error = function(e) ".")
 source(file.path(here, "..", "..", "config", "config.R"))   # CFG, cfg_obj, cfg_path
 source(file.path(here, "..", "00_setup", "00_setup.R"))      # load_sfe, data.table, log_session
@@ -71,29 +75,65 @@ jsd <- function(p, q) {
 }
 
 # --- 1. Load TMA data --------------------------------------------------------
-sfe_tma <- load_sfe("sfe_tma")
-tma_dt <- data.table(
-  cell_id        = colnames(sfe_tma),
-  cell_label     = sfe_tma$cell_label,
-  singler_label  = sfe_tma$singler_label,
-  singler_score  = sfe_tma$singler_score,
-  singler_pruned = sfe_tma$singler_pruned,
-  core_id        = sfe_tma$core_id,
-  sample_type    = sfe_tma$sample_type,
-  patient_id     = sfe_tma$patient_id
-)
-rm(sfe_tma); gc(verbose = FALSE)
+# CORE_QC_TMAS names the array(s) to QC (comma-separated; several are pooled
+# into one QC, "v2"). The final run used one array per run. Default = sfe_tma.
+TMA_SFES <- {
+  .v <- Sys.getenv("CORE_QC_TMAS", "")
+  if (nzchar(.v)) trimws(strsplit(.v, ",")[[1]]) else "sfe_tma"
+}
+V2 <- length(TMA_SFES) > 1L
+cat("Core QC TMAs:", paste(TMA_SFES, collapse = ", "), if (V2) "  [v2]" else "", "\n")
+
+load_one_tma <- function(nm) {
+  sfe <- load_sfe(nm)
+  dt <- data.table(
+    tma            = nm,
+    cell_id        = colnames(sfe),
+    cell_label     = as.character(sfe$cell_label),
+    singler_label  = sfe$singler_label,
+    singler_score  = sfe$singler_score,
+    singler_pruned = sfe$singler_pruned,
+    core_id_raw    = as.character(sfe$core_id),
+    sample_type    = as.character(sfe$sample_type),
+    patient_id_raw = as.character(sfe$patient_id)
+  )
+  # CORE_QC_LABELS=singler (the default, used in the final run): composition flags use the SingleR labels,
+  # with Secretory epithelium split into SecA / Intermediate / SecB at the frozen polarization thresholds
+  # (as spatial/03_annotation_polarization/06_extract_singler.R). Any other value keeps the SFE cell_label.
+  if (Sys.getenv("CORE_QC_LABELS", "singler") == "singler") {
+    pol <- if ("polarization_UCell" %in% colnames(colData(sfe))) sfe$polarization_UCell else NA_real_
+    lab <- as.character(sfe$singler_label)
+    lab[lab %in% "Transitioning epithelium"] <- "Intermediate epithelium"
+    is_sec <- !is.na(lab) & lab == "Secretory epithelium"
+    split <- ifelse(is.na(pol), NA_character_,
+                    ifelse(pol >= 0.210501, "SecB epithelium",
+                           ifelse(pol <= 0.109429, "SecA epithelium", "Intermediate epithelium")))
+    lab[is_sec] <- split[is_sec]
+    dt[, cell_label := lab]
+  }
+  rm(sfe); gc(verbose = FALSE)
+  dt
+}
+tma_dt <- rbindlist(lapply(TMA_SFES, load_one_tma))
+cat("Composition labels:", Sys.getenv("CORE_QC_LABELS", "singler"), "\n")
+
+# Namespace core_id / patient_id by TMA so numeric IDs never collide across TMAs
+# (raw values kept for reporting). The logic below keys on the namespaced
+# core_id / patient_id.
+tma_dt[, core_id    := fifelse(is.na(core_id_raw),    NA_character_, paste(tma, core_id_raw,    sep = "::"))]
+tma_dt[, patient_id := fifelse(is.na(patient_id_raw), NA_character_, paste(tma, patient_id_raw, sep = "::"))]
 
 # Standardize the legacy epithelial label BEFORE any composition counting so the
 # epithelial / secretory percentages count the same cells under the new name.
 tma_dt[cell_label == "Transitioning epithelium", cell_label := "Intermediate epithelium"]
 
 # On-core tumour cells only
-tma_dt <- tma_dt[!is.na(core_id) & core_id != "Off core"]
+tma_dt <- tma_dt[!is.na(core_id_raw) & core_id_raw != "Off core"]
 tumour_dt <- tma_dt[sample_type == "tumour"]
 cat("Tumour cells:", format(nrow(tumour_dt), big.mark = ","),
     "| cores:", uniqueN(tumour_dt$core_id),
-    "| patients:", uniqueN(tumour_dt$patient_id), "\n")
+    "| patients:", uniqueN(tumour_dt$patient_id),
+    "| TMAs:", uniqueN(tumour_dt$tma), "\n")
 
 # --- 2. Per-core composition (18 types) + summary metrics --------------------
 core_comp   <- tumour_dt[, .N, by = .(core_id, cell_label)]
@@ -109,7 +149,7 @@ totals_map <- core_totals[, setNames(n_cells, core_id)]
 core_comp[is.na(n_cells), n_cells := totals_map[core_id]]
 core_comp[, pct := 100 * N / n_cells]
 
-core_meta <- unique(tumour_dt[, .(core_id, patient_id)])
+core_meta <- unique(tumour_dt[, .(core_id, patient_id, tma, core_id_raw, patient_id_raw)])
 core_summary <- tumour_dt[, .(
   n_cells              = .N,
   pct_epithelial       = 100 * sum(cell_label %in% epi_types) / .N,
@@ -175,8 +215,15 @@ cores_per_patient <- core_summary[, .(n_cores = .N), by = patient_id]
 multi_core_patients <- cores_per_patient[n_cores >= 2, patient_id]
 
 concordance_list <- list()
+# Guard: only cores that carry a composition row (a core of entirely unassigned
+# cells has none) can be compared pairwise.
+.n_no_comp <- sum(!core_summary$core_id %in% rownames(comp_mat))
+if (.n_no_comp > 0)
+  cat("  Note:", .n_no_comp, "core(s) lack a composition row (all-unassigned); excluded from concordance.\n")
 for (pid in multi_core_patients) {
   pid_cores <- core_summary[patient_id == pid, core_id]
+  pid_cores <- pid_cores[pid_cores %in% rownames(comp_mat)]
+  if (length(pid_cores) < 2) next
   for (i in 1:(length(pid_cores) - 1)) {
     for (j in (i + 1):length(pid_cores)) {
       c1 <- pid_cores[i]; c2 <- pid_cores[j]
@@ -189,7 +236,7 @@ for (pid in multi_core_patients) {
       delta_adaptive <- abs(ifelse(is.na(s1$pct_adaptive), 0, s1$pct_adaptive) -
                             ifelse(is.na(s2$pct_adaptive), 0, s2$pct_adaptive))
       concordance_list[[paste(c1, c2, sep = "_")]] <- data.table(
-        patient_id = pid, core_1 = c1, core_2 = c2,
+        tma = s1$tma, patient_id = pid, core_1 = c1, core_2 = c2,
         n_cells_1 = s1$n_cells, n_cells_2 = s2$n_cells,
         jsd = jsd_val, spearman_cor = cor_val,
         delta_epi = delta_epi, delta_adaptive = delta_adaptive,
@@ -209,33 +256,27 @@ core_summary[, flag_discordant_pair := core_id %in% discordant_cores]
 flag_cols_all <- c(flag_cols, "flag_discordant_pair")
 core_summary[, n_flags := rowSums(.SD), .SDcols = flag_cols_all]
 
-# --- 5. Recommendation + per-patient core status -----------------------------
+# --- 5. Recommendation -------------------------------------------------------
 core_summary[, recommendation := fifelse(
   n_flags >= 2, "exclude",
   fifelse(n_flags == 1, "review", "pass"))]
 
-patient_core_status <- core_summary[, .(
-  total_cores    = .N,
-  passing_cores  = sum(recommendation == "pass"),
-  review_cores   = sum(recommendation == "review"),
-  excluded_cores = sum(recommendation == "exclude")
-), by = patient_id]
-
 cat("\nRecommendations:\n"); print(table(core_summary$recommendation))
 cat("Flag breakdown:\n")
 for (f in flag_cols_all) cat(sprintf("  %s: %d cores\n", f, sum(core_summary[[f]])))
-patients_no_passing <- patient_core_status[passing_cores == 0 & review_cores == 0]
-cat("Patients losing ALL cores to exclusion:", nrow(patients_no_passing), "\n")
-if (nrow(patients_no_passing) > 0)
-  cat("  Patient IDs:", paste(patients_no_passing$patient_id, collapse = ", "), "\n")
 
 # --- 6. Save outputs ---------------------------------------------------------
-write.csv(core_summary[order(core_id)],
-          file.path(qc_dir, "core_qc_summary.csv"), row.names = FALSE)
-write.csv(concordance[order(-jsd)],
-          file.path(qc_dir, "patient_concordance.csv"), row.names = FALSE)
-write.csv(patient_core_status[order(patient_id)],
-          file.path(qc_dir, "patient_core_status.csv"), row.names = FALSE)
-cat("\nSaved: core_qc_summary.csv, patient_concordance.csv, patient_core_status.csv\n")
+# Output suffix. CORE_QC_OUT_TAG names the per-array report (final run:
+# "_singler_<array>"); without it a pooled run writes "_v2" and a single-array
+# run no suffix.
+suffix <- {
+  .t <- Sys.getenv("CORE_QC_OUT_TAG", "")
+  if (nzchar(.t)) .t else if (V2) "_v2" else ""
+}
+front <- c("tma", "core_id_raw", "patient_id_raw", "core_id", "patient_id")
+setcolorder(core_summary, c(intersect(front, names(core_summary)),
+                            setdiff(names(core_summary), front)))
+write.csv(core_summary[order(tma, core_id_raw)],
+          file.path(qc_dir, paste0("core_qc_summary", suffix, ".csv")), row.names = FALSE)
 cat("  ->", qc_dir, "\n")
 log_session()
