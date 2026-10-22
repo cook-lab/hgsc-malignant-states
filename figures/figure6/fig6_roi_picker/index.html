@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Fig 6 ROI picker</title>
+<style>
+:root{--ink:#2b2622;--mute:#6f675f;--line:#e2dcd3;--bg:#faf8f5;--card:#fff;--acc:#A03A4A;--secb:#9A7D55}
+*{box-sizing:border-box}body{margin:0;font:13px/1.4 -apple-system,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg)}
+header{padding:10px 16px;border-bottom:1px solid var(--line);display:flex;gap:14px;align-items:center;flex-wrap:wrap;background:var(--card)}
+header h1{font-size:15px;margin:0 8px 0 0}label{color:var(--mute);font-size:12px}select,input,button{font:inherit}
+select,input[type=text],input[type=number]{padding:3px 6px;border:1px solid var(--line);border-radius:4px;background:#fff}
+button{padding:4px 10px;border:1px solid var(--line);border-radius:4px;background:#fff;cursor:pointer}button:hover{border-color:var(--acc)}
+button.primary{background:var(--acc);color:#fff;border-color:var(--acc)}
+main{display:grid;grid-template-columns:minmax(360px,44%) 1fr;gap:14px;padding:14px 16px}
+#mapwrap{position:relative;background:#fff;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+#map{width:100%;display:block;cursor:crosshair}#box{position:absolute;border:2px solid #111;pointer-events:none;display:none}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:10px 12px;margin-bottom:12px}
+.panel h2{font-size:13px;margin:0 0 6px}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.spec{flex:1;min-width:260px}.prev{width:100%;margin-top:6px;border:1px solid var(--line);border-radius:4px;min-height:40px;background:#fff}
+#stats{font-variant-numeric:tabular-nums;color:var(--mute)}#stats b{color:var(--ink)}
+.sug button{margin:2px 4px 2px 0;font-size:12px}.hint{color:var(--mute);font-size:12px}
+#status{color:var(--acc);font-size:12px}
+</style></head><body>
+<header>
+ <h1>Fig 6 ROI picker</h1>
+ <label>Tissue <select id="sample"><option>WT01</option><option>WT02</option><option value="VISIUM">Visium HD WT01 (panels b/c)</option></select></label>
+ <label>Overview <select id="mode"><option value="niche">SecB · niche macs · T/NK</option><option value="celltype">Cell types</option></select></label>
+ <label><span id="sizelab">ROI size (µm)</span> <select id="size"><option>300</option><option>400</option><option selected>500</option><option>700</option><option>1000</option></select></label>
+ <label>Centre x <input id="cx" type="number" step="10" style="width:90px"></label>
+ <label>y <input id="cy" type="number" step="10" style="width:90px"></label>
+ <button id="go" class="primary">Render ROI</button>
+ <span id="status"></span>
+</header>
+<main>
+ <div>
+  <div id="mapwrap"><img id="map" alt="Tissue overview"><div id="box"></div></div>
+  <p class="hint">Click the tissue to centre the ROI; arrow keys nudge it by 25 µm (shift = 100 µm). Overview colours:
+   SecB brown, SecA/Int pale orange, SecB-niche macrophages dark green, other macrophages sage, T/NK blue. Visium: SecB-high brown, SecA-high orange, niche macrophage bins dark green, distal sage.</p>
+  <div class="panel sug"><h2>Suggested windows</h2>
+   <div>Most SecB-niche macrophages: <span id="sugN"></span></div>
+   <div>Most T/NK cells within 30 µm of niche macs (for row h): <span id="sugT"></span></div></div>
+  <div class="panel"><h2>ROI contents</h2><div id="stats">—</div></div>
+  <div class="panel"><h2>Save this ROI</h2>
+   <div class="row"><input id="name" type="text" placeholder="name, e.g. g_niche_1" style="width:180px">
+    <label class="xen"><input type="checkbox" class="saverow" value="g" checked> g</label>
+    <label class="xen"><input type="checkbox" class="saverow" value="h"> h</label>
+    <label class="xen"><input type="checkbox" class="saverow" value="k"> k</label>
+    <button id="save">Save ROI</button></div>
+   <div id="saved" class="hint"></div></div>
+ </div>
+ <div>
+  <div class="panel vis" style="display:none"><h2>Visium HD — panels b and c (window = 5:3, same shape as the figure tiles)</h2>
+   <img id="prev_v" class="prev" alt=""></div>
+  <div class="panel xen"><h2>Row g — survival &amp; self-protection</h2>
+   <div class="row"><input id="spec_g" class="spec" type="text" value="celltype, VEGFA@mac, CD55@epi, IL32@epi, CD47"></div>
+   <img id="prev_g" class="prev" alt=""></div>
+  <div class="panel xen"><h2>Row h — immunoregulation &amp; lactate</h2>
+   <div class="row"><input id="spec_h" class="spec" type="text" value="celltype, LGALS9@epi, HAVCR2@tnk, LAG3@tnk, SLC16A3@epi"></div>
+   <img id="prev_h" class="prev" alt=""></div>
+  <div class="panel xen"><h2>Row k — adhesion &amp; matrix</h2>
+   <div class="row"><input id="spec_k" class="spec" type="text" value="ICAM1@epi, CTSL@all, MMP7@epi, CD44@mac, ITGB6*ITGAV@epi"></div>
+   <img id="prev_k" class="prev" alt=""></div>
+  <p class="hint">Tile syntax: <code>celltype</code>, <code>program</code> (macrophage hypoxic program), <code>GENE@types</code>
+   (types: epi, secb, mac, tnk, stroma, all), <code>GENE1*GENE2</code> for co-expression. Genes absent from the Xenium panel
+   (e.g. CD47, ITGB1, CA9, SPP1) show a placeholder. Every cell in the ROI is drawn.</p>
+ </div>
+</main>
+<script>
+const $=id=>document.getElementById(id); let ext=null, cx=null, cy=null, meta={};
+const isV=()=>$("sample").value==="VISIUM";
+const units=()=>isV()?(+$("size").value/meta.unit_um):+$("size").value;
+const hgt=()=>isV()?units()*meta.aspect:units();
+async function post(u,b,bin){const r=await fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});
+ if(!r.ok) throw new Error((await r.json()).error||r.status); return bin?await r.blob():await r.json();}
+async function loadSample(){const s=$("sample").value; $("status").textContent="loading "+s+"…";
+ meta=await (await fetch("/meta/"+s)).json(); ext=meta.ext; $("map").src="/overview/"+s+"/"+$("mode").value+"?t="+Date.now(); setMode();
+ $("status").textContent=""; suggestions(); drawBox();}
+function drawBox(){const img=$("map"),b=$("box"); if(cx===null||!ext||!img.naturalWidth){b.style.display="none";return;}
+ const [x0,x1,y0,y1]=ext, W=img.clientWidth, H=img.clientHeight, sw=units(), sh=hgt();
+ const px=(cx-sw/2-x0)/(x1-x0)*W, py=(meta.yflip?(cy-sh/2-y0):(y1-(cy+sh/2)))/(y1-y0)*H, w=sw/(x1-x0)*W, h=sh/(y1-y0)*H;
+ Object.assign(b.style,{display:"block",left:px+"px",top:py+"px",width:w+"px",height:h+"px"});}
+$("map").addEventListener("load",drawBox); window.addEventListener("resize",drawBox);
+$("map").addEventListener("click",e=>{const r=e.target.getBoundingClientRect(),[x0,x1,y0,y1]=ext;
+ cx=Math.round(x0+(e.clientX-r.left)/r.width*(x1-x0)); cy=Math.round(meta.yflip?(y0+(e.clientY-r.top)/r.height*(y1-y0)):(y1-(e.clientY-r.top)/r.height*(y1-y0))); setC(); render();});
+function setC(){$("cx").value=cx;$("cy").value=cy;drawBox();}
+document.addEventListener("keydown",e=>{if(cx===null||e.target.tagName==="INPUT")return;const st=isV()?(e.shiftKey?20:5):(e.shiftKey?100:25);
+ const up=meta.yflip?-st:st; const m={ArrowLeft:[-st,0],ArrowRight:[st,0],ArrowUp:[0,up],ArrowDown:[0,-up]}[e.key]; if(!m)return; e.preventDefault();
+ cx+=m[0];cy+=m[1];setC();clearTimeout(window._t);window._t=setTimeout(render,350);});
+async function render(){ if(cx===null)return; const s=$("sample").value,size=+$("size").value; $("status").textContent="rendering…";
+ try{ const st=await post("/stats",{sample:s,x:cx,y:cy,size});
+  if(isV()){ $("stats").innerHTML=`<b>${st.cells.toLocaleString()}</b> bins (${st.mm}) · SecB-high <b>${st.SecB}</b> · SecA-high ${st.SecA} · macrophage bins <b>${st.mac}</b> (SecB niche <b>${st.niche_mac}</b>)`; }
+  else $("stats").innerHTML=`<b>${st.cells.toLocaleString()}</b> cells · SecB <b>${st.SecB}</b> · Int ${st.Int} · SecA ${st.SecA} · macrophages <b>${st.mac}</b> (SecB-niche <b>${st.niche_mac}</b>) · T <b>${st.T}</b> · NK ${st.NK} · T/NK ≤30 µm of niche mac <b>${st.TNK_within30_of_niche_mac}</b>`+
+   (st.mean_mac_program!==null?` · mean mac program ${st.mean_mac_program.toFixed(2)}`:"");
+  if(isV()){ const bl=await post("/render",{sample:s,x:cx,y:cy,size,title:`Visium WT01 · centre (col ${cx}, row ${cy}) · ${st.mm}`},true); $("prev_v").src=URL.createObjectURL(bl); $("status").textContent=""; return; }
+  await Promise.all(["g","h","k"].map(async r=>{const bl=await post("/render",{sample:s,x:cx,y:cy,size,spec:$("spec_"+r).value,
+   title:`${s} · centre (${cx}, ${cy}) · ${size} µm`},true); $("prev_"+r).src=URL.createObjectURL(bl);}));
+  $("status").textContent="";}catch(err){$("status").textContent="error: "+err.message;}}
+async function suggestions(){const s=$("sample").value,size=+$("size").value;
+ for(const [k,el] of [["niche","sugN"],["tnk","sugT"]]){const L=await post("/suggest",{sample:s,size,kind:k});
+  $(el).innerHTML=L.map((o,i)=>`<button data-x="${o.x}" data-y="${o.y}">#${i+1} (${o.score})</button>`).join("")||"none";
+  $(el).querySelectorAll("button").forEach(b=>b.onclick=()=>{cx=Math.round(+b.dataset.x);cy=Math.round(+b.dataset.y);setC();render();});}}
+function setMode(){ const v=isV(); document.querySelectorAll(".xen").forEach(e=>e.style.display=v?"none":""); document.querySelectorAll(".vis").forEach(e=>e.style.display=v?"":"none");
+ $("mode").disabled=v; $("sizelab").textContent=v?"Window width (µm, 5:3)":"ROI size (µm)";
+ const opts=v?[1200,1600,2000,2400,3000]:[300,400,500,700,1000], def=v?2400:500;
+ if([...$("size").options].map(o=>+o.value).join()!==opts.join()){ $("size").innerHTML=opts.map(o=>`<option${o===def?" selected":""}>${o}</option>`).join(""); } }
+$("sample").onchange=()=>{cx=cy=null;loadSample();}; $("mode").onchange=()=>{$("map").src="/overview/"+$("sample").value+"/"+$("mode").value;};
+$("size").onchange=()=>{drawBox();suggestions();render();};
+$("go").onclick=()=>{cx=+$("cx").value;cy=+$("cy").value;setC();render();};
+["g","h","k"].forEach(r=>$("spec_"+r).addEventListener("change",render));
+$("save").onclick=async()=>{if(cx===null)return; const rows=[...document.querySelectorAll(".saverow:checked")].map(c=>c.value);
+ if(isV()){ const q={name:$("name").value||"visium roi",sample:"VISIUM",kind:"visium",x:cx,y:cy,size:+$("size").value,aspect:meta.aspect,rows:["a","b","c"]};
+  const r=await post("/save",q); $("saved").textContent=`Saved Visium window “${q.name}” (panels b/c) — ${r.n} ROI(s) in fig6_rois.json`; return; }
+ const q={name:$("name").value||"roi",sample:$("sample").value,x:cx,y:cy,size:+$("size").value,rows,
+  specs:Object.fromEntries(rows.map(r=>[r,$("spec_"+r).value]))};
+ const r=await post("/save",q); $("saved").textContent=`Saved “${q.name}” for row(s) ${rows.join(", ")} — ${r.n} ROI(s) in fig6_rois.json`;};
+loadSample();
+</script></body></html>

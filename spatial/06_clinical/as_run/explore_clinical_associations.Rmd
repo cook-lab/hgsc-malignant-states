@@ -1,0 +1,220 @@
+---
+title: "Phase 8: Clinical Associations — Cell Composition & Neighborhoods"
+author: "Cook Lab"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float:
+      collapsed: true
+    toc_depth: 3
+    code_folding: hide
+    theme: flatly
+    self_contained: true
+    df_print: paged
+---
+
+<!-- Trimmed copy (2026-10-21) of 2026_final_xenium_analysis/scripts/sandbox/explore_clinical_associations.Rmd, the
+notebook that ran. Kept: sections 1-2, which write output/10_clinical/per_patient_features.csv (TMA A survival table;
+Figure 7a-d, Tables S8 and S11), and the session info. Removed: sections 3-11 (clinical summary, Kaplan-Meier, Cox,
+ratio, forest-plot and clustering analyses). The untrimmed notebook is in the lab project folder. -->
+
+```{r setup, include=FALSE}
+proj_root <- "/Volumes/CookLab/Sarah/2026_final_xenium_analysis"
+knitr::opts_knit$set(root.dir = proj_root)
+knitr::opts_chunk$set(
+  echo = TRUE, warning = FALSE, message = FALSE,
+  fig.width = 10, fig.height = 7, dpi = 150
+)
+source(file.path(proj_root, "scripts/00_setup.R"))
+
+library(survival)
+library(survminer)
+library(broom)
+library(circlize)
+library(RColorBrewer)
+library(DT)
+
+clin_dir <- file.path(out_dir, "10_clinical")
+if (!dir.exists(clin_dir)) dir.create(clin_dir, recursive = TRUE)
+```
+
+```{r constants}
+# Lineage groupings
+epi_types     <- c("Ciliated epithelium", "SecA epithelium",
+                    "Transitioning epithelium", "SecB epithelium")
+immune_types  <- c("T cell", "NK cell", "B cell", "Plasma cell",
+                    "Macrophage", "Conventional dendritic cell",
+                    "Plasmacytoid dendritic cell", "Neutrophil", "Mast cell")
+stromal_types <- c("Fibroblast", "Smooth muscle", "Mesothelial",
+                    "Pericyte", "Endothelial")
+
+# Ordered cell types (epithelial → stromal → immune)
+celltype_order <- c(epi_types, stromal_types, immune_types)
+
+nb_levels <- paste0("nb_", 1:10)
+
+# KM palette (Low = blue, High = orange)
+km_pal <- c("Low" = "#0072B2", "High" = "#D55E00")
+```
+
+# 1. Load Data
+
+```{r load-sfe}
+# Load filtered TMA SFE and extract colData
+sfe_tma <- load_sfe("sfe_tma_filtered")
+tma_dt <- data.table(
+  cell_id     = colnames(sfe_tma),
+  cell_label  = sfe_tma$cell_label,
+  cell_area   = sfe_tma$cell_area,
+  core_id     = as.character(sfe_tma$core_id),
+  patient_id  = as.character(sfe_tma$patient_id),
+  sample_type = sfe_tma$sample_type
+)
+rm(sfe_tma); gc(verbose = FALSE)
+
+# Keep only tumour cells with valid core_id
+tma_dt <- tma_dt[sample_type == "tumour" & !is.na(core_id)]
+cat("Tumour cells:", format(nrow(tma_dt), big.mark = ","), "\n")
+cat("Cores:", length(unique(tma_dt$core_id)), "\n")
+cat("Patients:", length(unique(tma_dt$patient_id)), "\n")
+```
+
+```{r load-neighborhoods}
+# Load neighborhood assignments for TMA
+nb_assign <- fread(file.path(out_dir, "09_neighborhood/neighborhood_assignments_k10.csv"))
+nb_assign <- nb_assign[sample_id == "sfe_tma_filtered"]
+nb_assign[, sample_id := NULL]
+
+# Merge
+tma_dt <- merge(tma_dt, nb_assign[, .(cell_id, neighborhood)],
+                by = "cell_id", all.x = TRUE)
+cat("Cells with neighborhood:", sum(!is.na(tma_dt$neighborhood)), "/",
+    nrow(tma_dt), "\n")
+cat("Unassigned:", sum(is.na(tma_dt$neighborhood) |
+                        tma_dt$neighborhood == "nb_unassigned"), "\n")
+```
+
+```{r load-clinical}
+# Clinical data
+clinical <- fread(file.path(data_dir, "clinical_data_clean.csv"))
+clinical[, patient_id := as.character(patient_id)]
+cat("Clinical patients:", nrow(clinical), "\n")
+
+# Check overlap
+tma_patients <- unique(tma_dt$patient_id)
+clin_patients <- clinical$patient_id
+shared <- intersect(tma_patients, clin_patients)
+cat("Shared patients (TMA ∩ clinical):", length(shared), "\n")
+```
+
+# 2. Per-Patient Features {.tabset}
+
+## 2a. Cell type densities
+
+```{r compute-density}
+# Per-core: total tissue area (mm²) and cell counts per type
+core_area <- tma_dt[, .(total_area_mm2 = sum(cell_area, na.rm = TRUE) / 1e6),
+                    by = core_id]
+
+core_counts <- dcast(tma_dt, core_id ~ cell_label,
+                     fun.aggregate = length, value.var = "cell_id", fill = 0)
+
+# Compute density (cells/mm²) per core per type
+core_density <- merge(core_counts, core_area, by = "core_id")
+dens_cols <- intersect(celltype_order, names(core_density))
+for (ct in dens_cols) {
+  set(core_density, j = ct,
+      value = core_density[[ct]] / core_density$total_area_mm2)
+}
+
+# Map core → patient
+core_patient <- unique(tma_dt[, .(core_id, patient_id)])
+core_density <- merge(core_density, core_patient, by = "core_id")
+
+# Average across cores per patient
+patient_density <- core_density[patient_id %in% shared,
+  lapply(.SD, mean, na.rm = TRUE),
+  by = patient_id,
+  .SDcols = dens_cols
+]
+
+# Rename columns
+setnames(patient_density, dens_cols,
+         paste0("dens_", gsub(" ", "_", dens_cols)))
+
+cat("Patient density matrix:", nrow(patient_density), "patients x",
+    ncol(patient_density) - 1, "cell types\n")
+```
+
+## 2b. Neighborhood proportions
+
+```{r compute-nb-proportion}
+# Per-core: total cells and cells per neighborhood
+core_n <- tma_dt[, .(n_total = .N), by = core_id]
+nb_dt  <- tma_dt[!is.na(neighborhood) & neighborhood != "nb_unassigned"]
+
+core_nb <- dcast(nb_dt, core_id ~ neighborhood,
+                 fun.aggregate = length, value.var = "cell_id", fill = 0)
+core_nb <- merge(core_nb, core_n, by = "core_id")
+
+# Compute proportions
+nb_present <- intersect(nb_levels, names(core_nb))
+for (nb in nb_present) {
+  set(core_nb, j = nb, value = core_nb[[nb]] / core_nb$n_total)
+}
+
+# Map core → patient, average
+core_nb <- merge(core_nb, core_patient, by = "core_id")
+patient_nb <- core_nb[patient_id %in% shared,
+  lapply(.SD, mean, na.rm = TRUE),
+  by = patient_id,
+  .SDcols = nb_present
+]
+
+# Rename
+setnames(patient_nb, nb_present,
+         paste0("prop_", nb_present))
+
+cat("Patient neighborhood matrix:", nrow(patient_nb), "patients x",
+    ncol(patient_nb) - 1, "neighborhoods\n")
+```
+
+## 2c. Merge with clinical data
+
+```{r merge-features}
+# Merge density + neighborhood + clinical
+per_patient <- merge(patient_density, patient_nb, by = "patient_id")
+per_patient <- merge(per_patient, clinical, by = "patient_id")
+
+# 5-year censoring
+per_patient[, os_time_5y  := pmin(survival_months, 60)]
+per_patient[, os_event_5y := fifelse(survival_months > 60, 0L,
+                                     as.integer(survival_outcome))]
+per_patient[, pfs_time_5y  := pmin(progression_months, 60)]
+per_patient[, pfs_event_5y := fifelse(progression_months > 60, 0L,
+                                      as.integer(progression_outcome))]
+
+# Feature lists
+dens_features <- grep("^dens_", names(per_patient), value = TRUE)
+nb_features   <- grep("^prop_", names(per_patient), value = TRUE)
+all_features  <- c(dens_features, nb_features)
+
+cat("Final cohort:", nrow(per_patient), "patients\n")
+cat("Features:", length(all_features), "(", length(dens_features),
+    "density +", length(nb_features), "neighborhood)\n")
+cat("5-yr OS events:", sum(per_patient$os_event_5y), "/",
+    nrow(per_patient), "\n")
+cat("5-yr PFS events:", sum(per_patient$pfs_event_5y), "/",
+    nrow(per_patient), "\n")
+
+# Save
+fwrite(per_patient, file.path(clin_dir, "per_patient_features.csv"))
+```
+
+# 12. Session Info
+
+```{r session-info}
+log_session()
+sessionInfo()
+```

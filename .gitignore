@@ -15,5 +15,8 @@ __pycache__/
 .DS_Store
 ._*
 Rplots.pdf
+# Editor/manual backups of scripts (keep backups outside the repo)
+*.bak
+*.bak_*
 # Internal run logs (embed absolute machine paths) — never ship
 _run_logs/

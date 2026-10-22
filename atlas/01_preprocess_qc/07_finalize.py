@@ -4,20 +4,21 @@ Atlas 01 — Step 07: finalize integrated object
 
 PURPOSE
     Assemble the final integrated atlas: load the QC'd raw counts, attach the
-    CellAssign annotations (label / probability / confident), mirror the chosen
-    integration embedding into obsm, normalize_total(1e4) + log1p(base=2) X
-    (counts preserved in layers["counts"]), then compute neighbours / UMAP /
-    Leiden on the embedding. The selected method is scANVI (--method scanvi),
-    giving obsm["X_scanvi"] — the object consumed by 08_refilter_umap.
+    CellAssign annotations (label / probability / confident), copy the scANVI
+    embedding into obsm, normalize_total(1e4) + log1p(base=2) X (counts preserved
+    in layers["counts"]), then compute neighbours / UMAP / Leiden on the
+    embedding. Run with --method scanvi (the default), giving obsm["X_scanvi"] —
+    the object consumed by as_run/03b_refilter_umap.py. The other --method choices are not
+    used in the manuscript.
 
 INPUTS
     data_root/2026_final_atlas/processed/atlas_concatenated_filtered.h5ad   (QC raw counts)
     output_root/01_preprocess_qc/integration/cellassign/predictions.csv     (step 04)
-    output_root/01_preprocess_qc/integration/embeddings/<method>/embedding.npz (steps 05a–05e)
+    output_root/01_preprocess_qc/integration/embeddings/scanvi/embedding.npz (step 05b)
 
 OUTPUTS
-    output_root/01_preprocess_qc/integration/anndata/integrated_<method>.h5ad
-        (X = lognorm base2, layers["counts"], obsm["X_<method>"], UMAP, Leiden,
+    output_root/01_preprocess_qc/integration/anndata/integrated_scanvi.h5ad
+        (X = lognorm base2, layers["counts"], obsm["X_scanvi"], UMAP, Leiden,
          obs["celltype_pred"/"celltype_probability"/"celltype_confident"])
 
 RUNTIME TIER
@@ -25,7 +26,7 @@ RUNTIME TIER
 
 MANUSCRIPT ROLE
     Produces the integrated atlas object. With --method scanvi this yields
-    integrated_scanvi.h5ad (obsm["X_scanvi"]), the input to 08_refilter_umap which
+    integrated_scanvi.h5ad (obsm["X_scanvi"]), the input to as_run/03b_refilter_umap.py which
     writes the deposited hgsc_atlas_scanvi.h5ad (obj("atlas_scanvi")).
 
 NOTE
@@ -106,7 +107,7 @@ adata.obs['celltype_confident'] = predictions['confident'].reindex(adata.obs_nam
 print(f"   Cell types: {adata.obs['celltype_pred'].nunique()}")
 print(adata.obs['celltype_pred'].value_counts())
 
-# Load selected embedding
+# Load the --method embedding (scanvi in the manuscript run)
 embedding_path = f"{EMBEDDINGS_DIR}/{METHOD}/embedding.npz"
 print(f"\nLoading {METHOD} embedding: {embedding_path}")
 

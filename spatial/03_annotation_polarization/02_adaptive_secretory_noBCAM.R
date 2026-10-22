@@ -1,31 +1,35 @@
 # ============================================================================
-# 02_adaptive_secretory_noBCAM.R — Initial secretory subtyping (noBCAM)
+# 02_adaptive_secretory_noBCAM.R — Initial SFE cell_label (ratio-based secretory subtypes)
 # ============================================================================
-# PURPOSE: Assign an initial SecA / Intermediate / SecB subtype to SingleR
-#   "Secretory epithelium" cells from a SecB/SecA logcounts-ratio, using the
-#   shared noBCAM 7-gene signatures and atlas-aligned thresholds
-#   (lower=1.0, upper=2.0). Writes secretory_subtype, cell_label, and per-cell
-#   scores into each SFE; this initial cell_label is later refined by the
-#   UCell-based 04_reclassification_polarization.R and 05_clean_split_rctd.R.
+# PURPOSE: Write the SFE column cell_label for the first time: the SingleR
+#   label, with SingleR "Secretory epithelium" cells given an initial SecA /
+#   Intermediate / SecB subtype from the ratio of mean SecB to mean SecA
+#   logcounts (ratio < 1.0 SecA, 1.0–2.0 Intermediate, > 2.0 SecB). Also
+#   writes secretory_subtype, score_SecA, score_SecB and ratio_SecB_SecA.
 #
-# COHORT PIN: operates over sfe_tma + the 8 published whole tissues.
+#   No manuscript panel uses these labels; the manuscript's SecA /
+#   Intermediate / SecB calls are the UCell polarization split of the SingleR
+#   label tables (03, 04, 06_extract_singler.R). The step is kept because
+#   later steps read the column it creates: 04_reclassification_polarization.R
+#   re-labels the cells this step marks as secretory (by polarization),
+#   05_clean_split_rctd.R overwrites cell_label again, and
+#   spatial/02_qc/05b_core_qc.R reads the column.
 #
-# SIGNATURES: SecA/SecB loaded from shared/signatures.yml (noBCAM 7-gene set)
-#   via 00_setup.R (SECA_GENES / SECB_GENES). BCAM is intentionally absent.
+# SAMPLES: every SFE in sfe_names_all.
 #
-# NAMING: epithelial label standardized to "Intermediate epithelium"
-#   (was "Transitioning epithelium").
+# SIGNATURES: the 7 + 7 SecA / SecB genes of shared/signatures.yml (SECA_GENES /
+#   SECB_GENES from 00_setup.R). "noBCAM" in the file name refers to this SecA
+#   set, which does not include BCAM.
 #
 # INPUTS:
-#   - <sfe_dir>/sfe_tma, <sfe_dir>/sfe_<wt>   (annotated SFEs, singler_label)
+#   - <sfe_dir>/sfe_*   (SFEs with singler_label, from 01_annotation_singler.R)
 #
 # OUTPUTS:
-#   - SFEs updated: secretory_subtype, cell_label, score_SecA, score_SecB,
-#       ratio_SecB_SecA
-#   - <output_root>/06b_adaptive_secretory_noBCAM/production_summary.csv
-#   - <output_root>/06b_adaptive_secretory_noBCAM/reclassification_comparison.csv
+#   - SFEs updated: cell_label, secretory_subtype, score_SecA, score_SecB,
+#       ratio_SecB_SecA (on a re-run, the previous secretory_subtype and
+#       cell_label are kept once as secretory_subtype_old / cell_label_old)
 #
-# MANUSCRIPT PANEL(S): polarization-chain backend (Fig 4–6 composition/ROI).
+# MANUSCRIPT PANEL(S): none directly (structural step; see PURPOSE).
 #
 # RUNTIME TIER: moderate
 # ============================================================================
@@ -50,25 +54,16 @@ message("SecB genes (", length(secB_genes), "): ", paste(secB_genes, collapse = 
 message("SecA genes (", length(secA_genes), "): ", paste(secA_genes, collapse = ", "))
 message("Thresholds: lower = ", lower_threshold, ", upper = ", upper_threshold)
 
-# --- Output directory ---------------------------------------------------------
-
-out_sub <- file.path(out_dir, "06b_adaptive_secretory_noBCAM")
-dir.create(out_sub, showWarnings = FALSE, recursive = TRUE)
-
 # --- SFE names ----------------------------------------------------------------
 
-sfe_names <- sfe_names_all   # sfe_tma + published 8 whole tissues (cohort PIN)
+sfe_names <- sfe_names_all   # every SFE: TMA A, the cohort.tma_new arrays, WT01–WT08
 
 # --- Score, classify, and save ------------------------------------------------
-
-summary_list    <- list()
-comparison_list <- list()
 
 for (sname in sfe_names) {
 
   message("\nProcessing ", sname, " ...")
   sfe <- load_sfe(sname)
-  n_total <- ncol(sfe)
 
   is_sec <- sfe$singler_label == "Secretory epithelium"
   is_sec[is.na(is_sec)] <- FALSE
@@ -117,46 +112,9 @@ for (sname in sfe_names) {
       message("  ", lev, ": ", format(n_lev, big.mark = ","),
               " (", round(100 * n_lev / n_sec, 1), "%)")
     }
-
-    if ("secretory_subtype_old" %in% colnames(colData(sfe))) {
-      old_sub <- sfe$secretory_subtype_old[is_sec]
-      new_sub <- subtype
-      n_changed <- sum(old_sub != new_sub, na.rm = TRUE)
-      pct_changed <- round(100 * n_changed / n_sec, 1)
-      message("  Reclassified: ", format(n_changed, big.mark = ","),
-              " (", pct_changed, "%)")
-
-      conf <- as.data.frame(table(old = old_sub, new = new_sub))
-      conf$sample_id <- sname
-      comparison_list[[sname]] <- conf
-    }
-
-    summary_list[[sname]] <- data.table(
-      sample_id       = sname,
-      n_total         = n_total,
-      n_secretory     = n_sec,
-      n_secA          = sum(subtype == subtype_levels[1]),
-      n_intermediate  = sum(subtype == subtype_levels[2]),
-      n_secB          = sum(subtype == subtype_levels[3]),
-      pct_secA         = round(100 * sum(subtype == subtype_levels[1]) / n_sec, 1),
-      pct_intermediate = round(100 * sum(subtype == subtype_levels[2]) / n_sec, 1),
-      pct_secB         = round(100 * sum(subtype == subtype_levels[3]) / n_sec, 1)
-    )
   } else {
     sfe$cell_label <- as.character(sfe$singler_label)
     message("  No secretory cells — skipping subtyping")
-    summary_list[[sname]] <- data.table(
-      sample_id = sname, n_total = n_total, n_secretory = 0,
-      n_secA = 0, n_intermediate = 0, n_secB = 0,
-      pct_secA = 0, pct_intermediate = 0, pct_secB = 0)
-  }
-
-  # Remove old lasso-based columns if present
-  if ("adaptive_label" %in% colnames(colData(sfe))) {
-    colData(sfe)$adaptive_label <- NULL
-  }
-  if ("adaptive_score" %in% colnames(colData(sfe))) {
-    colData(sfe)$adaptive_score <- NULL
   }
 
   message("  Realizing assays...")
@@ -171,27 +129,8 @@ for (sname in sfe_names) {
 
 # --- Summary ------------------------------------------------------------------
 
-summary_df <- rbindlist(summary_list)
-write.csv(summary_df, file.path(out_sub, "production_summary.csv"),
-          row.names = FALSE)
-
-if (length(comparison_list) > 0) {
-  comparison_df <- do.call(rbind, comparison_list)
-  write.csv(comparison_df, file.path(out_sub, "reclassification_comparison.csv"),
-            row.names = FALSE)
-}
-
 message("\n=== Secretory subtyping complete (noBCAM, 1.0/2.0) ===")
-message("Total cells:       ", format(sum(summary_df$n_total), big.mark = ","))
-message("Total secretory:   ", format(sum(summary_df$n_secretory), big.mark = ","))
-message("  SecA:            ", format(sum(summary_df$n_secA), big.mark = ","),
-        " (", round(100 * sum(summary_df$n_secA) / sum(summary_df$n_secretory), 1), "%)")
-message("  Intermediate:    ", format(sum(summary_df$n_intermediate), big.mark = ","),
-        " (", round(100 * sum(summary_df$n_intermediate) / sum(summary_df$n_secretory), 1), "%)")
-message("  SecB:            ", format(sum(summary_df$n_secB), big.mark = ","),
-        " (", round(100 * sum(summary_df$n_secB) / sum(summary_df$n_secretory), 1), "%)")
 message("\nAll SFEs updated with: secretory_subtype, cell_label, score_SecA, score_SecB, ratio_SecB_SecA")
 message("Old classification preserved in: secretory_subtype_old, cell_label_old")
-message("Summary saved to: ", file.path(out_sub, "production_summary.csv"))
 
 log_session()

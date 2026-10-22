@@ -1,141 +1,174 @@
-# HGSC malignant states — tumour architecture shapes polarized epithelial states
+# HGSC malignant states
 
-Code to reproduce the analyses and figures in:
+Code to reproduce the analyses, figures and supplementary tables in:
 
-> **Tumour architecture shapes polarized epithelial states that predict survival in high-grade serous ovarian cancer.**
-> Nersesian\*, Abou-Hamad\*, Durocher, Akiki, Domecq, Southworth, Deng, Meunier, de Ladurantaye, Mes-Masson, Tessier Cloutier, Cook. (2026, preprint)
+> **Tumor architecture shapes polarized malignant states that predict outcome and treatment response in high-grade
+> serous ovarian cancer.**
+> Nersesian\*, Abou-Hamad\*, Durocher, Akiki, Domecq, Southworth, Verey, Deng, Ramos-Valdes, Meunier, de Ladurantaye,
+> Shepherd, Provencher, Mes-Masson, Tessier Cloutier, Cook\*\*.
+>
+> \*Equal contribution. \*\*Corresponding author.
 
-We integrate scRNA-seq from 13 studies (~2M cells) into an HGSC atlas, resolve a dominant axis
-of secretory epithelial polarization — **SecA** (proliferative, progenitor-like) ↔ **SecB**
-(quiescent, mucosal-injury/keratin program) — and show with custom Xenium spatial transcriptomics
-(8 whole tissues + a 97-patient TMA), patient-derived organoids, and TCGA-OV that this axis is
-spatially patterned by a hypoxic gradient, assembles a glycolytic-macrophage / lymphocyte-excluded
-niche, and independently predicts overall and progression-free survival.
+We integrate scRNA-seq from 13 studies (1.98 million cells, 362 samples) into an atlas of high-grade serous ovarian
+carcinoma (HGSC). The atlas resolves a dominant axis of malignant secretory polarization, from proliferative,
+progenitor-like **SecA** cells to quiescent, injury-like **SecB** cells. We follow this axis with Xenium spatial
+transcriptomics (8 whole tumors and tissue microarrays from 378 patients), Visium HD, patient-derived organoids, the
+KPCA.B syngeneic mouse model, and bulk transcriptomes from TCGA-OV and the ICON7 trial.
 
 ## Repository layout
 
 ```
-config/      Central paths, seeds, cohort, polarization schema (config.yml + .py/.R loaders)
-shared/      Canonical SecA/SecB gene signatures (noBCAM 7-gene), palettes, helpers
-atlas/       scRNA-seq atlas backend pipeline (Python / scanpy)   [01_preprocess_qc … 08_xenium_reference]
-spatial/     Xenium/Visium backend pipeline (R / SpatialFeatureExperiment)  [00_setup … 09_external_validation]
-figures/     ONE reproduction script per manuscript panel (load intermediate → plot → export)
-tables/      Supplemental-data table generators + cleaned outputs
-data/        Pointers to deposited objects (not stored here; ~1.4 TB)
-docs/        Expanded methods, data availability
+config/      Paths, seed, cohort and polarization thresholds (config.yml + Python / R loaders, study-code lookup)
+shared/      SecA / SecB signature genes (signatures.yml), CellAssign marker matrix
+atlas/       scRNA-seq atlas backend: QC, integration, annotation, NMF programs, functional scores, CopyKAT,
+             TCGA deconvolution, Xenium SingleR reference
+spatial/     Xenium backend: SFE build, QC, final TMA cohort, SingleR labels, UCell polarization, pathway scores,
+             raw-count export, TMA clinical table
+models/      Patient-derived organoids (PDOs, OPTO98) and the KPCA.B mouse model
+icon7/       ICON7 trial transcriptomes: cohort build and polarization scores
+figures/     One folder per figure: figure1/ … figure7/, supplementary/ (Figures S1–S18), _prep/ (shared loaders)
+tables/      Supplementary Tables S1–S12
+data/        What the data deposit holds and where the code looks for it (no data are stored here)
+env/         The software environment that ran each step, and the scripts that write the lock files
+docs/        Versions of the key R packages
 ```
 
-The backend pipelines produce the intermediate objects/caches; each `figures/figureN/` script
-loads a cache and renders a publication panel. Panel → script mapping is in `figures/README.md`.
+[`figures/README.md`](figures/README.md) maps every panel, table and reported number to the scripts that produce it.
+Figure scripts are named `NN_fig<number><panels>_<what>` and numbered in run order: for example,
+`figures/figure4/14_fig4i_local_density.py` computes Figure 4i and `15_fig4i_local_density_plot.py` draws it. Some
+output file names do not match the panel letters; each figure README maps outputs to panels.
 
 ## Reproducing the paper
 
 ### Data availability
 
-We are in the process of depositing all data to **Zenodo** and will provide the accession here
-shortly. Once it is available, download the bundle and point `DATA_ROOT` at it (see step 2 below
-and `data/README.md`) to reproduce any figure or table.
+No data are stored in this repository. The processed data (atlas objects, Xenium, Visium HD, organoid and mouse
+single-cell data) are being deposited, and the accession will be added here. The public inputs are the 13 atlas
+studies (accessions in Table S1), TCGA-OV (GDC) and ICON7 (GSE140082). [`data/README.md`](data/README.md) lists what
+the deposit holds and the folder layout the code expects.
 
 ### Data flow
 
 The pipeline has two tiers:
 
-- **Backend** (`atlas/`, `spatial/`) — computationally heavy preprocessing and analysis (raw data
-  → integration → annotation → per-analysis results). It produces **standardized preprocessed
-  objects** (the integrated atlas, SFE objects, per-stage result tables and model fits).
-- **Downstream** (`figures/`, `tables/`) — lightweight scripts that load those objects and render
-  the manuscript panels and supplemental tables.
+- **Backend** (`atlas/`, `spatial/`, `models/`, `icon7/`): computationally heavy processing from raw data to
+  processed objects and result tables. Integration needs a GPU, and several steps take many CPU-hours.
+- **Downstream** (`figures/`, `tables/`): scripts that read those objects and draw each panel or write each table.
+  Analyses that belong to a single figure, such as the Figure 6 niche statistics, sit in that figure's folder in run
+  order.
 
 ```
-  atlas/ + spatial/  ──►  standardized objects  ──►  figures/ + tables/  ──►  output/
-   (heavy backend)         (atlas h5ad, SFEs,         (load object →           (panels,
-                            result tables/fits)        plot/export)             supp tables)
+  atlas/  spatial/   ──►  processed objects,  ──►  figures/  tables/   ──►  $OUTPUT_ROOT
+  models/ icon7/          result tables            (load object →          (panels,
+  (heavy backend)                                   plot / export)          supplementary tables)
 ```
 
-Those backend objects are slow to regenerate (integration needs a GPU; some steps are many
-CPU-hours), so they are also **provided directly** (see `data/README.md`): set `DATA_ROOT` to the
-data bundle and you can reproduce any figure or table without re-running the backend. All rendered
-outputs go to `OUTPUT_ROOT` (`./output`).
+The outputs of the atlas, model and ICON7 backends are deposited, and the figures read them from the deposit. The
+Xenium figures read tables that the `spatial/` backend writes to `$OUTPUT_ROOT` (SingleR label tables, the final TMA
+core set, the raw-count export); each figure README lists the upstream steps it needs.
 
-### 1. Set up environments
+### 1. Set up the environments
+
+Python 3.12.9 and R 4.4.3 / Bioconductor 3.20 ran everything except the steps listed in
+[`env/README.md`](env/README.md).
+
 ```bash
-conda env create -f environment.yml && conda activate epitype-py     # Python
-Rscript -e 'renv::restore(lockfile="renv.lock")'                     # R 4.5.x (410 pinned pkgs)
-# (alt R install-from-scratch: Rscript renv_bootstrap.R; versions in docs/r_key_package_versions.csv)
+conda env create -f environment.yml && conda activate epitype-py   # Python
+Rscript -e 'renv::restore(lockfile = "renv.lock")'                 # R, exact versions
+# alternative R install without renv: Rscript renv_bootstrap.R; key versions in docs/r_key_package_versions.csv
 ```
 
-### 2. Get the data and point the config at it
-Download the deposited bundle (see `data/README.md`) and set the path (no code edits needed):
+### 2. Point the code at the data
+
+All code outside `as_run/`, `models/` and `icon7/` finds its inputs under `DATA_ROOT` and writes to `OUTPUT_ROOT`
+(`config/config.yml`), so no code edits are needed:
+
 ```bash
-export DATA_ROOT=/path/to/deposited/bundle      # contains entry objects + analysis output caches
-export OUTPUT_ROOT=./output                      # where renders/regenerated caches go (default)
+export DATA_ROOT=/path/to/deposit                  # see data/README.md
+export OUTPUT_ROOT=/path/to/outputs                # absolute; every step writes here
+export ORGANOIDS_ROOT=$DATA_ROOT/202603_organoids  # Figure 3a–e; does not follow DATA_ROOT
+export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8         # R needs a UTF-8 locale to read config.yml
 ```
 
-### 3a. Reproduce the FIGURES (primary path — no backend re-run)
-```bash
-# a few supplementary panels (SF1/SF2) first regenerate small obs caches:
-PYTHONPATH=. python figures/_prep/00_extract_atlas_obs.py
-PYTHONPATH=. python figures/_prep/00b_extract_integration_umaps.py
-# then any panel — each script reproduces its manuscript panel(s):
-PYTHONPATH=. python figures/figure2/03_atlas_volcano_secA_secB.py   # Fig 2C  (Python)
-Rscript           figures/figure7/01_xenium_forest_cox.R            # Fig 7A/B (R)
-```
-**To reproduce one specific panel**, look it up in `figures/README.md` (the full Fig 1A…7G /
-SF1…SF14 → script map) and run that one script. Each script's header docstring lists its exact
-inputs, outputs, and the panel(s) it supports.
+Use one absolute `OUTPUT_ROOT` for every step: later steps read earlier outputs from it, and
+`tables/build_all_tables.sh` runs from `tables/`. A few inputs are copied into `$OUTPUT_ROOT` by hand, for example
+the probe-QC exclusion list (`spatial/02_qc/`) and the Figure 7a–d tables that Tables S8 and S11 read
+(`figures/figure7/`). The folder READMEs list each one.
 
-### 3b. Reproduce the SUPPLEMENTAL DATA TABLES
+### 3a. Reproduce the figures
+
+Look the panel up in [`figures/README.md`](figures/README.md), then run that figure folder's scripts in the order of
+its README. Run them from the repository root, because R scripts `source()` helpers by repo-relative path:
+
 ```bash
-# generators in tables/ (Supp Data 4–7 committed; 1–3 export from the entry objects)
-PYTHONPATH=. python tables/<NN>_*.py   ;   Rscript tables/<NN>_*.R
+python figures/figure4/14_fig4i_local_density.py
+python figures/figure4/15_fig4i_local_density_plot.py
+Rscript figures/figure7/02_fig7abcd_tma_survival_row.R
 ```
 
-### 4. (Optional) Regenerate the analysis from the entry objects
-To re-derive the intermediate caches from scratch (e.g. to verify reproducibility), run the
-backend stages **in numeric order**, which write to `OUTPUT_ROOT`:
+`run_panel.sh <script>` runs a single script with logging.
+
+### 3b. Reproduce the supplementary tables
+
 ```bash
-# Atlas (Python) — the full chain from raw data is included. atlas/01 runs:
-#   01_dataprep → 02_concat_qc_doublets (QC + Scrublet<0.3) → 03_preprocess_hvg →
-#   04_cellassign → {05a_scvi, 05b_scanvi, 05c_mrvi, 05d_sysvi, 05e_harmony} →
-#   06_benchmark → 07_finalize (--method scanvi) → 08_refilter_umap → 09 → 10.
-# Steps 03–07 are the OFFICIAL cluster scripts (5 integration methods benchmarked; scANVI
-# SELECTED). They need a GPU and are OPTIONAL: the integrated atlas object is deposited as an
-# entry object, so you can start downstream from 08. The integration code is included so every
-# step is open to scrutiny and can be re-executed.
-for s in atlas/01_preprocess_qc atlas/02_annotation atlas/03_epithelial_nmf atlas/04_functional \
-         atlas/05_cnv atlas/06_cellcomm atlas/07_deconvolution_survival atlas/08_xenium_reference; do
-  # run the numbered scripts within each stage in order (see each stage README)
-  done
-# Spatial (R) — 00_setup is sourced by all; then build → QC → annotation → downstream:
-#   spatial/00_setup → 01_build_sfe → 02_qc → 03_annotation_polarization → 04_neighborhood
-#   → 05_gradients_gams → 06_spatial_stats → 07_morphometry → 08_clinical_survival → 09_external_validation
+bash tables/build_all_tables.sh                    # Supplementary Tables S1–S12
 ```
-Then diff `OUTPUT_ROOT/<stage>` against the deposited caches. Each stage dir has a `README.md`
-with its ordered scripts and input→output map. **Runtime tiers** are in each script header
-(fast / moderate / heavy); the heavy steps (CopyKAT, LIANA, BayesPrism, scFEA, per-sample GAMs,
-Lee's L) are flagged. Stochastic steps are seeded from `config.seed` for determinism.
+
+### 4. (Optional) Regenerate the processed objects
+
+To re-derive the processed objects, run the backend stages in the order given in [`atlas/README.md`](atlas/README.md),
+[`spatial/README.md`](spatial/README.md), [`models/README.md`](models/README.md) and
+[`icon7/README.md`](icon7/README.md). Each stage README lists its scripts in run order with their inputs and outputs.
 
 ## Integration is included (optional to re-run)
 
-The repository includes the full pipeline from raw data through final figures, **including
-the multi-study integration**, as the official cluster scripts
-(`atlas/01_preprocess_qc/03_preprocess_hvg.py` … `07_finalize.py`, path-centralised). QC and
-per-sample Scrublet (< 0.3) are applied in `02_concat_qc_doublets.py`, whose output
-`atlas_concatenated_filtered.h5ad` is the raw input to the integration chain; five integration
-methods are benchmarked (step 06) and **scANVI is selected** (step 07 → `integrated_scanvi.h5ad`,
-obsm `X_scanvi`), feeding `08_refilter_umap.py` which writes the deposited `hgsc_atlas_scanvi.h5ad`.
-Re-running it is computationally expensive (originally run on a GPU cluster) and is **not
-required** to reproduce downstream results — the integrated object is deposited as an entry
-object — but the code is included so every step can be independently scrutinized and re-executed.
-GPU model training is seeded from `config.seed` but is best-effort-deterministic, not
-bit-identical across hardware, so the deposited `hgsc_atlas_scanvi.h5ad` is the canonical reference.
+The repository includes the multi-study integration, as the scripts that ran on the GPU cluster
+(`atlas/01_preprocess_qc/03_preprocess_hvg.py` … `07_finalize.py`, with paths resolved through `config/`). Cell QC
+and per-sample Scrublet doublet removal run in `atlas/01_preprocess_qc/as_run/02_concat_qc_doublets.ipynb`, whose
+output `atlas_concatenated_filtered.h5ad` is the input to integration: HVG selection, CellAssign seed labels, scVI,
+then scANVI, written by `07_finalize.py --method scanvi` to `integrated_scanvi.h5ad` (obsm `X_scanvi`).
+`as_run/03b_refilter_umap.py` then runs a second doublet pass and the atlas UMAP and writes the deposited
+`hgsc_atlas_scanvi.h5ad`.
 
-## Citation / contact
+Re-running integration needs a GPU and is not required to reproduce downstream results, because the integrated object
+is deposited. Stochastic steps are seeded from `config.yml` (`seed: 42`). GPU training (scVI / scANVI) is not
+bit-identical across hardware, so the deposited integrated object is the reference for everything downstream.
 
-David Cook — dacook@ohri.ca · Ottawa Hospital Research Institute.
+## Scripts as they were run
+
+The `as_run/` folders, `models/` and `icon7/` hold the scripts that wrote the deposited outputs, as they were run.
+Plots and analyses not used in the figures or tables were removed; each of these scripts opens with a note on what
+was removed, and scripts with nothing to remove are unchanged. They keep the paths of the project folders they ran
+in, and the folder READMEs say what to change to run one. Two sets of scripts in `atlas/` resolve their paths through
+`config/` instead:
+
+- `atlas/01_preprocess_qc/03`–`07`, the integration scripts described above;
+- `atlas/03_epithelial_nmf/01_epithelial_nmf.py`, a re-implementation of the epithelial NMF that runs on the deposited
+  epithelial object. `atlas/03_epithelial_nmf/01b_verify_against_deposited.py` checks it against the deposited NMF.
+
+Steps whose code is not in this repository are marked **[code missing]** in the folder READMEs, with the output each
+step produced and where that output is.
+
+## Study codes
+
+Samples are named by study code throughout: code, configuration, file names and the deposited data.
+
+| Code | Samples |
+|---|---|
+| WT01–WT08 | whole-tissue Xenium sections |
+| TMA-P### | TMA patients |
+| FTE01–FTE15 | fallopian-tube epithelium cores |
+
+No hospital, biobank or pathology identifiers are included. A few scripts that ran on the laboratory's data translate
+identifiers through `config/study_codes.{py,R}`. Their key is private and not included; the scripts look for it at
+`$STUDY_CODE_KEY`, by default `$OUTPUT_ROOT/private_keys/SuppTable8_code_key_PRIVATE.csv`. Coded names pass through
+unchanged, so the key is not needed on the deposited data.
+
+## Contact
+
+David Cook (dacook@ohri.ca), Ottawa Hospital Research Institute.
 
 ## License
 
-Released under the **MIT License** — free to use, modify, and redistribute (including
-commercially), with no restrictions beyond retaining the copyright/license notice. See
-[`LICENSE`](LICENSE).
+Released under the **MIT License**: free to use, modify and redistribute (including commercially), with no
+restrictions beyond retaining the copyright and license notice. See [`LICENSE`](LICENSE).

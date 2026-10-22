@@ -1,0 +1,532 @@
+---
+title: "Phase 2f: Probe QC — Cross-Platform Validation & Cell Type Coverage"
+author: "Cook Lab"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    code_folding: hide
+    theme: flatly
+    self_contained: true
+    df_print: paged
+---
+
+<!-- Trimmed copy (2026-10-21) of 2026_final_xenium_analysis/scripts/sandbox/explore_probe_qc.Rmd, the notebook that
+ran. Kept: the chunks that write probe_qc_full.csv, flag_qc.csv, gene_exclusion_decisions.csv, genes_exclude_singler.txt
+and genes_monitor_singler.txt (Table S7; SingleR annotation). Removed: the report's plots, tables and summaries, and the
+level-2 and post-exclusion coverage tables. The untrimmed notebook is in the lab project folder. -->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE, warning = FALSE, message = FALSE,
+  fig.width = 8, fig.height = 5, dpi = 150,
+  cache = FALSE
+)
+knitr::opts_knit$set(root.dir = "/Volumes/CookLab/Sarah/2026_final_xenium_analysis")
+```
+
+# Overview
+
+This report evaluates probe-level quality for the 477-gene Xenium panel by comparing
+each gene's expression behavior against a matched scRNA-seq reference (16,000 cells,
+16 cell types). Probes with aberrant cross-platform behavior are flagged as WARN or FAIL,
+and cell type marker coverage is assessed to identify annotation risks for SingleR.
+
+**Approach**:
+
+1. Gene-gene Spearman correlation matrices → per-gene correlation-of-correlations (rho)
+2. Top-20 partner Jaccard overlap
+3. Per-gene summary statistics (mean, variance, detection rate, overdispersion)
+4. Multi-criteria flagging (PASS / WARN / FAIL)
+5. Cell type coverage analysis against canonical markers
+
+---
+
+# 1. Load data
+
+```{r load-libraries}
+source("scripts/00_setup.R")
+library(zellkonverter)
+library(DT)
+library(dplyr)
+```
+
+## 1a. Load Xenium SFEs and combine counts
+
+```{r load-xenium, cache=TRUE}
+sfe_names <- c(
+ "sfe_tma",
+ "sfe_WT01", "sfe_WT02", "sfe_WT03",
+ "sfe_WT04", "sfe_WT05", "sfe_WT06",
+ "sfe_WT07", "sfe_WT08"
+)
+
+mat_list   <- list()
+sample_vec <- character(0)
+
+for (nm in sfe_names) {
+  message("Loading ", nm, " ...")
+  sfe <- loadHDF5SummarizedExperiment(dir = file.path(sfe_dir, nm))
+  m   <- assay(sfe, "counts")
+  mat_list[[nm]] <- m
+  # Build sample ID vector for stratified downsampling
+  sid <- rep(nm, ncol(m))
+  sample_vec <- c(sample_vec, sid)
+  rm(sfe); gc(verbose = FALSE)
+}
+
+# Combine into single sparse matrix (genes × cells)
+xen_full <- do.call(cbind, mat_list)
+rm(mat_list); gc(verbose = FALSE)
+
+message("Full Xenium matrix: ", nrow(xen_full), " genes x ",
+        format(ncol(xen_full), big.mark = ","), " cells")
+```
+
+## 1b. Downsample Xenium to ~200K cells
+
+Stratified by sample to preserve composition. 200K cells is sufficient for
+stable Spearman gene-gene correlation estimates while keeping the dense matrix
+under 1 GB.
+
+```{r downsample-xenium}
+set.seed(42)
+target_n <- 200000
+
+# Stratified sampling: proportional to sample size
+sample_tab <- table(sample_vec)
+sample_frac <- target_n / sum(sample_tab)
+keep_idx <- integer(0)
+
+for (s in names(sample_tab)) {
+  idx <- which(sample_vec == s)
+  n_keep <- max(1, round(length(idx) * sample_frac))
+  keep_idx <- c(keep_idx, sample(idx, min(n_keep, length(idx))))
+}
+
+xen_ds <- xen_full[, keep_idx]
+rm(xen_full); gc(verbose = FALSE)
+
+message("Downsampled Xenium: ", nrow(xen_ds), " genes x ",
+        format(ncol(xen_ds), big.mark = ","), " cells")
+```
+
+## 1c. Load scRNA-seq reference
+
+```{r load-scrna, cache=TRUE}
+sce <- readH5AD("data/xenium_celltype_downsampled.h5ad", reader = "R")
+message("scRNA-seq: ", nrow(sce), " genes x ", ncol(sce), " cells")
+message("Cell types: ", paste(sort(unique(sce$xenium_celltype)), collapse = ", "))
+```
+
+## 1d. Intersect gene sets and prepare matrices
+
+```{r prepare-matrices}
+common_genes <- sort(intersect(rownames(xen_ds), rownames(sce)))
+n_common <- length(common_genes)
+n_xen_only <- length(setdiff(rownames(xen_ds), rownames(sce)))
+xen_only_genes <- setdiff(rownames(xen_ds), rownames(sce))
+
+message("Common genes: ", n_common, " / ", nrow(xen_ds), " panel genes")
+message("Xenium-only (no scRNA match): ", n_xen_only)
+if (n_xen_only > 0) {
+  message("  Missing from scRNA: ", paste(xen_only_genes, collapse = ", "))
+}
+
+# Subset and apply log1p (matching user's previous approach)
+scrna_mat <- as.matrix(assay(sce[common_genes, ], "counts"))
+xen_mat   <- as.matrix(xen_ds[common_genes, ])
+
+scrna_mat <- log1p(scrna_mat)
+xen_mat   <- log1p(xen_mat)
+
+rm(xen_ds, sce); gc(verbose = FALSE)
+message("Prepared: ", n_common, " genes, log1p-transformed")
+```
+
+---
+
+# 2. Gene-gene correlation analysis
+
+## 2a. Compute Spearman correlation matrices
+
+```{r gene-gene-cor, cache=TRUE}
+message("Computing scRNA gene-gene Spearman correlation (", n_common, " x ", n_common, ") ...")
+sc_cor <- cor(t(scrna_mat), method = "spearman")
+
+message("Computing Xenium gene-gene Spearman correlation ...")
+xe_cor <- cor(t(xen_mat), method = "spearman")
+
+# Remove self-correlations
+diag(sc_cor) <- NA
+diag(xe_cor) <- NA
+message("Done.")
+```
+
+## 2b. Correlation-of-correlations (rho) and Jaccard overlap
+
+```{r corr-of-corr}
+# Per-gene: Spearman correlation between gene's co-expression profile in each platform
+rho <- diag(cor(sc_cor, xe_cor, method = "spearman", use = "pairwise.complete.obs"))
+
+# Top-k partner Jaccard overlap
+topk_jaccard <- function(A, B, k = 20) {
+  G <- ncol(A)
+  out <- numeric(G)
+  for (i in seq_len(G)) {
+    ai <- A[, i]; ai[i] <- -Inf
+    bi <- B[, i]; bi[i] <- -Inf
+    ka <- head(order(ai, decreasing = TRUE), k)
+    kb <- head(order(bi, decreasing = TRUE), k)
+    out[i] <- length(intersect(ka, kb)) / length(union(ka, kb))
+  }
+  out
+}
+
+jac <- topk_jaccard(sc_cor, xe_cor, k = 20)
+
+probe_qc <- data.frame(
+  gene              = common_genes,
+  rho_corr_of_corr  = rho,
+  top20_jaccard     = jac,
+  stringsAsFactors  = FALSE
+)
+rm(sc_cor, xe_cor); gc(verbose = FALSE)
+```
+
+---
+
+# 3. Per-gene summary statistics
+
+```{r per-gene-stats}
+row_var <- function(mat) {
+  m    <- rowMeans(mat)
+  sq_m <- rowMeans(mat^2)
+  sq_m - m^2
+}
+
+detect_rate <- function(mat) {
+  rowMeans(mat > 0)
+}
+
+mean_nonzero <- function(mat) {
+  apply(mat, 1, function(x) if (any(x > 0)) mean(x[x > 0]) else 0)
+}
+
+sc_mean  <- rowMeans(scrna_mat)
+xe_mean  <- rowMeans(xen_mat)
+sc_var   <- row_var(scrna_mat)
+xe_var   <- row_var(xen_mat)
+sc_det   <- detect_rate(scrna_mat)
+xe_det   <- detect_rate(xen_mat)
+sc_mnnz  <- mean_nonzero(scrna_mat)
+xe_mnnz  <- mean_nonzero(xen_mat)
+sc_overd <- sc_var / pmax(sc_mean, .Machine$double.eps)
+xe_overd <- xe_var / pmax(xe_mean, .Machine$double.eps)
+
+gene_qc <- data.frame(
+  gene             = rownames(scrna_mat),
+  sc_mean          = sc_mean,
+  xe_mean          = xe_mean,
+  log2_mean_ratio  = log2((xe_mean + 1e-8) / (sc_mean + 1e-8)),
+  sc_var           = sc_var,
+  xe_var           = xe_var,
+  var_ratio        = (xe_var + 1e-8) / (sc_var + 1e-8),
+  sc_detect_rate   = sc_det,
+  xe_detect_rate   = xe_det,
+  detect_rate_diff = xe_det - sc_det,
+  sc_mean_nonzero  = sc_mnnz,
+  xe_mean_nonzero  = xe_mnnz,
+  mean_nonzero_diff = xe_mnnz - sc_mnnz,
+  sc_overdisp      = sc_overd,
+  xe_overdisp      = xe_overd,
+  overdisp_ratio   = (xe_overd + 1e-8) / (sc_overd + 1e-8),
+  row.names        = NULL,
+  stringsAsFactors = FALSE
+)
+```
+
+## 3a. Merge with correlation metrics
+
+```{r merge-qc}
+probe_qc_full <- merge(gene_qc, probe_qc, by = "gene", all.x = TRUE)
+probe_qc_full <- probe_qc_full[order(-probe_qc_full$rho_corr_of_corr), ]
+```
+
+---
+
+# 4. Multi-criteria flagging
+
+```{r flagging}
+## Threshold rationale (data-driven, relaxed for targeted panel)
+#
+# Original thresholds were calibrated for full-transcriptome comparisons.
+# A 477-gene panel has truncated co-expression space (low Jaccard is expected)
+# and systematic cross-platform mean/detection shifts (in-situ vs dissociated).
+#
+# Relaxed thresholds target ~5-15% of genes per flag:
+#   rho < 0.3         — bottom 5% (co-expression severely disrupted)
+#   jaccard < 0.05    — bottom 5% (essentially no partner overlap)
+#   |log2mr| > 2.5    — >5.7-fold shift (only extreme distortion)
+#   var_ratio 1/5–5   — 5-fold variance change
+#   |detect_diff| > 0.30 — 30pp detection shift
+#   |mnnz_diff| > 0.75  — large non-zero expression distortion
+#   overdisp 0.5–2    — kept (already catches only 5.7%)
+
+flag_qc <- probe_qc_full %>%
+  mutate(
+    flag_corr    = rho_corr_of_corr < 0.3 | top20_jaccard < 0.05,
+    flag_mean    = abs(log2_mean_ratio) > 2.5,
+    flag_var     = var_ratio < 0.2 | var_ratio > 5,
+    flag_detect  = abs(detect_rate_diff) > 0.30,
+    flag_nonzero = abs(mean_nonzero_diff) > 0.75,
+    flag_overdisp = overdisp_ratio < 0.5 | overdisp_ratio > 2,
+    n_flags      = rowSums(across(starts_with("flag_"))),
+    qc_flag      = case_when(
+      n_flags >= 3 ~ "FAIL",
+      n_flags == 2 ~ "WARN",
+      TRUE         ~ "PASS"
+    )
+  )
+
+flag_qc$qc_flag <- factor(flag_qc$qc_flag, levels = c("PASS", "WARN", "FAIL"))
+
+# Summary
+flag_tab <- table(flag_qc$qc_flag)
+message("Flag summary: ", paste(names(flag_tab), flag_tab, sep = "=", collapse = ", "))
+```
+
+---
+
+# 8. Cell type coverage analysis
+
+Marker gene assignments are derived from the panel design spreadsheet
+(`data/Updated Xenium_2024_10.xlsx`), which maps 140 genes to 12 level1 cell types
+and 30 level2 subtypes based on the `considered_for` column. This is far more
+comprehensive than the 83-gene cellassign set.
+
+```{r celltype-coverage}
+# Load comprehensive panel marker mapping (built from Excel panel design)
+panel_markers <- read.csv("metadata/panel_markers.csv", stringsAsFactors = FALSE)
+
+# Annotate each marker gene with its probe QC status
+panel_markers$probe_qc <- NA_character_
+for (i in seq_len(nrow(panel_markers))) {
+  g <- panel_markers$gene[i]
+  if (g %in% flag_qc$gene) {
+    panel_markers$probe_qc[i] <- as.character(flag_qc$qc_flag[flag_qc$gene == g])
+  } else if (g %in% rownames(xen_mat)) {
+    # In panel but gene name doesn't match scRNA reference
+    panel_markers$probe_qc[i] <- "NO_REF"
+  } else {
+    # In panel design but not in filtered SFE (shouldn't happen)
+    panel_markers$probe_qc[i] <- "NOT_IN_DATA"
+  }
+}
+
+# --- Level 1 coverage ---
+l1_markers <- panel_markers %>% filter(level == "level1")
+l1_types <- sort(unique(l1_markers$cell_type))
+
+coverage_list <- list()
+for (ct in l1_types) {
+  ct_genes <- l1_markers$gene[l1_markers$cell_type == ct]
+  n_total  <- length(ct_genes)
+  qc_status <- l1_markers$probe_qc[l1_markers$cell_type == ct]
+  pass_qc  <- sum(qc_status == "PASS", na.rm = TRUE)
+  warn_qc  <- sum(qc_status == "WARN", na.rm = TRUE)
+  fail_qc  <- sum(qc_status == "FAIL", na.rm = TRUE)
+  no_ref   <- sum(qc_status == "NO_REF", na.rm = TRUE)
+  reliable <- pass_qc + warn_qc + no_ref
+
+  risk <- dplyr::case_when(
+    reliable < 3  ~ "HIGH RISK",
+    reliable <= 5 ~ "MODERATE",
+    TRUE          ~ "OK"
+  )
+
+  gene_str <- paste(ct_genes, collapse = ", ")
+
+  coverage_list[[ct]] <- data.frame(
+    cell_type  = ct, n_markers = n_total,
+    pass = pass_qc, warn = warn_qc, fail = fail_qc, no_ref = no_ref,
+    reliable = reliable, risk = risk, genes = gene_str,
+    stringsAsFactors = FALSE
+  )
+}
+
+coverage_df <- do.call(rbind, coverage_list)
+coverage_df <- coverage_df[order(coverage_df$reliable), ]
+rownames(coverage_df) <- NULL
+```
+
+---
+
+# 11. Gene exclusion decisions for SingleR {.tabset}
+
+This section applies a **4-tier decision framework** to determine which genes to exclude
+from the SingleR reference before cell type annotation. The framework balances probe quality
+(from QC metrics) against marker importance (cell type coverage risk).
+
+**Why exclude at all?** SingleR computes Spearman correlations between each query cell's
+expression profile and reference cell type centroids. A gene with fundamentally different
+behavior between platforms (e.g., anti-correlated co-expression) will actively mislead
+classification — worse than simply not having the gene.
+
+**Tier definitions**:
+
+| Tier | Label | Criterion | Action |
+|------|-------|-----------|--------|
+| 1 | **HARD EXCLUDE** | rho < 0.2 AND ≥3 flags | Remove — co-expression anti-correlated/random |
+| 2a | **EXCLUDE** | ≥3 flags, not a marker | Remove — no annotation value |
+| 2b | **EXCLUDE** | ≥3 flags, marker but type has ≥5 reliable markers | Remove — redundant marker |
+| 2c | **KEEP WITH CAUTION** | ≥3 flags, marker for type with <5 reliable markers | Keep — critical for at-risk cell type |
+| 3 | **INCLUDE (monitor)** | 2 flags (WARN) | Keep — monitor in validation |
+| 4 | **INCLUDE** | ≤1 flag (PASS) or Xenium-only | Keep — no concerns |
+
+```{r exclusion-decisions}
+# --- Build gene exclusion decisions ---
+
+# Level 1 marker-to-cell-type mapping with coverage info
+l1_marker_coverage <- panel_markers %>%
+  filter(level == "level1") %>%
+  left_join(coverage_df %>% select(cell_type, reliable, risk), by = "cell_type")
+
+# Per-gene: summarise across all cell types a gene marks for
+gene_marker_summary <- l1_marker_coverage %>%
+  group_by(gene) %>%
+  summarise(
+    marker_for    = paste(sort(unique(cell_type)), collapse = ", "),
+    min_reliable  = min(reliable, na.rm = TRUE),
+    worst_risk    = case_when(
+      any(risk == "HIGH RISK") ~ "HIGH RISK",
+      any(risk == "MODERATE")  ~ "MODERATE",
+      TRUE                     ~ "OK"
+    ),
+    .groups = "drop"
+  )
+
+# Join marker info onto flag_qc
+gene_decisions <- flag_qc %>%
+  select(gene, qc_flag, n_flags, rho_corr_of_corr, top20_jaccard) %>%
+  left_join(gene_marker_summary, by = "gene") %>%
+  mutate(
+    is_marker    = !is.na(marker_for),
+    min_reliable = ifelse(is.na(min_reliable), NA_real_, min_reliable),
+    worst_risk   = ifelse(is.na(worst_risk), NA_character_, worst_risk)
+  )
+
+# Apply 4-tier decision tree
+gene_decisions <- gene_decisions %>%
+  mutate(
+    tier = case_when(
+      # Tier 1: Hard exclude — co-expression anti-correlated or random
+      rho_corr_of_corr < 0.2 & n_flags >= 3 ~ "HARD_EXCLUDE",
+      # Tier 2a: FAIL, not a marker
+      n_flags >= 3 & !is_marker              ~ "EXCLUDE",
+      # Tier 2b: FAIL marker but type is well-covered
+      n_flags >= 3 & is_marker & min_reliable >= 5 ~ "EXCLUDE",
+      # Tier 2c: FAIL marker critical for at-risk type
+      n_flags >= 3 & is_marker & min_reliable < 5  ~ "KEEP_CAUTION",
+      # Tier 3: WARN
+      n_flags == 2                           ~ "INCLUDE_MONITOR",
+      # Tier 4: PASS
+      TRUE                                   ~ "INCLUDE"
+    ),
+    decision = case_when(
+      tier %in% c("HARD_EXCLUDE", "EXCLUDE") ~ "Exclude from SingleR",
+      tier == "KEEP_CAUTION"   ~ "Include (monitor closely)",
+      tier == "INCLUDE_MONITOR" ~ "Include (monitor)",
+      tier == "INCLUDE"        ~ "Include"
+    ),
+    reason = case_when(
+      tier == "HARD_EXCLUDE" ~
+        paste0("rho = ", round(rho_corr_of_corr, 2),
+               "; co-expression anti-correlated or random"),
+      tier == "EXCLUDE" & !is_marker ~
+        paste0("FAIL (", n_flags, " flags); not a cell type marker"),
+      tier == "EXCLUDE" & is_marker ~
+        paste0("FAIL (", n_flags, " flags); marker for ", marker_for,
+               " but type has ", min_reliable, " reliable markers"),
+      tier == "KEEP_CAUTION" ~
+        paste0("FAIL (", n_flags, " flags) but critical for ", marker_for,
+               " (", worst_risk, ", only ", min_reliable, " reliable markers)"),
+      tier == "INCLUDE_MONITOR" ~
+        paste0("WARN (", n_flags, " flags); borderline metrics"),
+      tier == "INCLUDE" ~ "PASS"
+    )
+  )
+
+# Add Xenium-only genes
+if (n_xen_only > 0) {
+  xen_only_marker_info <- data.frame(gene = xen_only_genes,
+                                      stringsAsFactors = FALSE) %>%
+    left_join(gene_marker_summary, by = "gene") %>%
+    mutate(
+      qc_flag          = "XENIUM_ONLY",
+      n_flags          = NA_integer_,
+      rho_corr_of_corr = NA_real_,
+      top20_jaccard    = NA_real_,
+      is_marker        = !is.na(marker_for),
+      tier             = "INCLUDE",
+      decision         = "Include",
+      reason           = ifelse(
+        is_marker,
+        paste0("Xenium-only; marker for ", marker_for,
+               " (not in scRNA ref — SingleR ignores automatically)"),
+        "Xenium-only gene (SingleR ignores automatically)"
+      )
+    )
+
+  gene_decisions <- bind_rows(gene_decisions, xen_only_marker_info)
+}
+
+# Sort by tier severity
+tier_order <- c("HARD_EXCLUDE", "EXCLUDE", "KEEP_CAUTION",
+                "INCLUDE_MONITOR", "INCLUDE")
+gene_decisions$tier <- factor(gene_decisions$tier, levels = tier_order)
+```
+
+---
+
+# 13. Save outputs
+
+```{r save-outputs}
+out_probe <- file.path(out_dir, "05_probe_qc")
+if (!dir.exists(out_probe)) dir.create(out_probe, recursive = TRUE)
+
+# Full probe QC metrics
+data.table::fwrite(probe_qc_full, file.path(out_probe, "probe_qc_full.csv"))
+message("Saved: ", file.path(out_probe, "probe_qc_full.csv"))
+
+# Flagged QC table
+data.table::fwrite(flag_qc, file.path(out_probe, "flag_qc.csv"))
+message("Saved: ", file.path(out_probe, "flag_qc.csv"))
+
+# Gene exclusion decisions (all genes with tier, decision, reason)
+data.table::fwrite(gene_decisions, file.path(out_probe, "gene_exclusion_decisions.csv"))
+message("Saved: ", file.path(out_probe, "gene_exclusion_decisions.csv"))
+
+# Exclusion list for SingleR (one gene per line)
+exclude_genes <- gene_decisions$gene[gene_decisions$tier %in% c("HARD_EXCLUDE", "EXCLUDE")]
+writeLines(sort(exclude_genes), file.path(out_probe, "genes_exclude_singler.txt"))
+message("Saved: ", file.path(out_probe, "genes_exclude_singler.txt"),
+        " (", length(exclude_genes), " genes)")
+
+# Monitor list for SingleR validation (one gene per line)
+monitor_genes <- gene_decisions$gene[gene_decisions$tier %in%
+                                       c("KEEP_CAUTION", "INCLUDE_MONITOR")]
+writeLines(sort(monitor_genes), file.path(out_probe, "genes_monitor_singler.txt"))
+message("Saved: ", file.path(out_probe, "genes_monitor_singler.txt"),
+        " (", length(monitor_genes), " genes)")
+```
+
+---
+
+# Session info
+
+```{r session-info}
+sessionInfo()
+```

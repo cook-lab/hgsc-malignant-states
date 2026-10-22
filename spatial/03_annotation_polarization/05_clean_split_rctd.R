@@ -1,44 +1,57 @@
 #!/usr/bin/env Rscript
 # ============================================================================
-# 05_clean_split_rctd.R — SPLIT/RCTD annotation cleaning (final cell_label writer)
+# 05_clean_split_rctd.R — RCTD/SPLIT tables and the last write of the SFE cell_label
 # ============================================================================
-# PURPOSE: Apply SPLIT/RCTD deconvolution to correct transcript spillover in
-#   Xenium FFPE data, producing decontaminated cell-type labels and purified
-#   counts. RCTD first_type replaces SingleR labels for non-secretory cells;
-#   for RCTD-confirmed secretory cells, the FROZEN 06f polarization thresholds
-#   assign SecA / Intermediate / SecB from existing UCell scores. This is the
-#   FINAL writer of cell_label.
+# PURPOSE: Run RCTD (spacexr, doublet mode) with SPLIT post-processing and
+#   SPLIT::purify() on each SFE against the 16-type SingleR reference, and
+#   write per-SFE tables to 06g_clean_split/. The --all / --writeback pass then
+#   writes the result into each SFE: cell_label becomes the RCTD first type for
+#   non-secretory cells and, for RCTD "Secretory epithelium" cells, SecA /
+#   Intermediate / SecB from polarization_UCell and the thresholds in
+#   threshold_summary.csv (cells without an RCTD call, and RCTD secretory cells
+#   without a score, keep their previous label); the RCTD columns and a
+#   "purified" assay are added.
 #
-# COHORT PIN: RCTD is run on sfe_tma + the 8 published whole tissues; writeback
-#   also updates sfe_tma_filtered. FTE whole-tissue samples are excluded.
+#   No manuscript panel uses these labels or the purified assay: cell types
+#   come from the SingleR label tables (06_extract_singler.R). The step is kept
+#   because the Xenium raw-count export (spatial/05_count_export/as_run/) reads
+#   <sfe>_rctd_meta.csv and <sfe>_purified_counts.rds, and takes its cell set
+#   from the cells with a non-empty SFE cell_label after this writeback.
 #
-# DETERMINISM (audit fix): RCTD/SPLIT involve stochastic optimization. The
-#   global seed (set.seed(CFG$seed)) is set before each sample's RCTD run so the
-#   cell labels are reproducible.
+# SAMPLES: --all runs every SFE in sfe_names_all; a comma-separated list runs
+#   those SFEs; no argument runs the first whole tissue only (pilot).
+#   RERUN_WRITEBACK_ONLY="sfe_a,sfe_b" limits the writeback to the listed SFEs.
 #
-# NAMING: secretory subtypes use "Intermediate epithelium" (was "Transitioning").
+# DETERMINISM: set.seed(CFG$seed) before each SFE's RCTD run.
 #
 # USAGE:
 #   Rscript spatial/03_annotation_polarization/05_clean_split_rctd.R            # pilot
-#   Rscript .../05_clean_split_rctd.R --all                                     # all SFEs
-#   Rscript .../05_clean_split_rctd.R sfe_OTB_2384,sfe_OTB_2417 --suffix chunkA
-#   Rscript .../05_clean_split_rctd.R --writeback                              # Part 2+3 only
+#   Rscript .../05_clean_split_rctd.R --all                         # all SFEs, then writeback
+#   Rscript .../05_clean_split_rctd.R sfe_<sample1>,sfe_<sample2> --suffix chunkA
+#   Rscript .../05_clean_split_rctd.R --writeback                              # writeback only
 #
 # Reference: Marconato et al. 2026 Nat Methods; SPLIT @ bdsc-tds/SPLIT.
 #
 # INPUTS:
-#   - <sfe_dir>/sfe_*                                  (annotated/scored SFEs)
+#   - <sfe_dir>/sfe_*  (SFEs with cell_label and polarization_UCell, steps 01–04)
 #   - obj("xenium_ref") = xenium_celltype_downsampled.h5ad  (scRNA-seq reference)
-#   - <output_root>/05_probe_qc/genes_exclude_singler.txt
-#   - <output_root>/06f_reclassification_polarization/threshold_summary.csv (frozen)
+#   - <output_root>/05_probe_qc/genes_exclude_singler.txt   (genes left out of RCTD)
+#   - <output_root>/06f_reclassification_polarization/threshold_summary.csv
 #
 # OUTPUTS:
-#   - <output_root>/06g_clean_split/{name}_rctd_results.rds   (final RCTD per SFE)
-#   - <output_root>/06g_clean_split/{name}_purified_counts.rds, _rctd_meta.csv
-#   - <output_root>/06g_clean_split/06g_summary*.csv, report HTML
-#   - Updated SFEs: cell_label overwritten (FINAL); purified assay added
+#   - <output_root>/06g_clean_split/<sfe>_rctd_meta.csv  (per cell: RCTD first and
+#       second type, spot class, first-type weight; empty = RCTD reject)
+#   - <output_root>/06g_clean_split/<sfe>_purified_counts.rds  (SPLIT-purified counts)
+#   - <output_root>/06g_clean_split/06g_summary<suffix>.csv  (per-SFE RCTD counts of
+#       the run: genes used, cells assigned / rejected, % secretory)
+#   - SFEs (writeback): cell_label overwritten, the previous label kept as
+#       cell_label_06f; rctd_first_type, rctd_second_type, rctd_spot_class,
+#       rctd_first_weight; "purified" assay
+#   - <output_root>/06g_clean_split/.sfe_update_complete  (checkpoint: when
+#       present, the writeback is skipped)
 #
-# MANUSCRIPT PANEL(S): final cell_label feeds all Fig 4–7 spatial panels.
+# MANUSCRIPT PANEL(S): none directly. Its outputs define the cell set of the
+#   Xenium raw-count export read by Figure 6f–i and Tables S9–S10.
 #
 # RUNTIME TIER: heavy (~21 GB peak per whole tissue; ~30-40 GB for TMA)
 # ============================================================================
@@ -49,10 +62,6 @@ suppressPackageStartupMessages({
   library(zellkonverter)
   library(Matrix)
   library(data.table)
-  library(base64enc)
-  library(ragg)
-  library(knitr)
-  library(patchwork)
 })
 
 for (pkg in c("spacexr", "SPLIT")) {
@@ -84,9 +93,17 @@ if (do_writeback_only) args <- args[args != "--writeback"]
 
 do_run_all <- "--all" %in% args
 
-# All processable SFEs (published cohort; sfe_tma_filtered handled via barcode
-# join in writeback, not RCTD).
-ALL_SFES <- c(sfe_names_wt, "sfe_tma")
+# All SFEs for --all and for the writeback existence check.
+ALL_SFES <- sfe_names_all
+
+# Optional writeback scoping: RERUN_WRITEBACK_ONLY="sfe_a,sfe_b" restricts PART 2
+# (the existence check and the SFE writeback) to exactly those SFEs, leaving
+# every other SFE untouched. It also replaces the --all target list.
+.wb_scope <- {
+  .v <- Sys.getenv("RERUN_WRITEBACK_ONLY", "")
+  if (nzchar(.v)) trimws(strsplit(.v, ",")[[1]]) else NULL
+}
+if (!is.null(.wb_scope)) ALL_SFES <- .wb_scope
 
 PILOT_SAMPLES <- sfe_names_wt[1]
 
@@ -100,14 +117,14 @@ target_sfes <- if (do_writeback_only) {
   strsplit(args[1], ",")[[1]]
 }
 
-# All SFEs for writeback (includes sfe_tma_filtered).
-ALL_SFES_WRITEBACK <- c("sfe_tma", "sfe_tma_filtered", sfe_names_wt)
+# SFEs to write back: sfe_names_all, or the RERUN_WRITEBACK_ONLY list.
+ALL_SFES_WRITEBACK <- sfe_names_all
+if (!is.null(.wb_scope)) ALL_SFES_WRITEBACK <- .wb_scope
 
 # ── Paths & constants ────────────────────────────────────────────────────────
 
 step_dir  <- file.path(out_dir, "06g_clean_split")
 fig_out   <- file.path(step_dir, "figures")
-html_out  <- file.path(step_dir, "06g_clean_split_report.html")
 flag_file <- file.path(step_dir, ".sfe_update_complete")
 
 for (d in c(step_dir, fig_out)) {
@@ -115,7 +132,6 @@ for (d in c(step_dir, fig_out)) {
 }
 
 sec_classes <- c("SecA epithelium", "Intermediate epithelium", "SecB epithelium")
-class_pal   <- ref_palette[sec_classes]
 
 valid_cell_labels_extra <- c(
   "Ciliated epithelium", "Mesothelial", "Fibroblast", "Smooth muscle",
@@ -127,7 +143,7 @@ valid_cell_labels_extra <- c(
 # The 16-type reference label for secretory cells (unsplit)
 SECRETORY_REF_LABEL <- "Secretory epithelium"
 
-# ── Load frozen polarization thresholds from 06f ─────────────────────────────
+# ── Load the frozen thresholds (04_reclassification_polarization.R) ──────────
 
 thresh_path <- file.path(out_dir, "06f_reclassification_polarization", "threshold_summary.csv")
 if (!file.exists(thresh_path)) {
@@ -150,26 +166,6 @@ classify_polarization <- function(pol, t_low, t_high) {
 # spacexr disallows '/' in cell type names
 sanitize_celltype <- function(x) gsub("/", "_SLASH_", as.character(x))
 unsanitize_celltype <- function(x) gsub("_SLASH_", "/", as.character(x))
-
-save_and_embed <- function(p, name, width = 1200, height = 600, res = 150) {
-  pdf_path <- file.path(fig_out, paste0(name, ".pdf"))
-  ggsave(pdf_path, plot = p, width = width / res, height = height / res,
-         device = cairo_pdf)
-  tmp <- tempfile(fileext = ".png")
-  ragg::agg_png(tmp, width = width, height = height, res = res)
-  print(p)
-  dev.off()
-  b64 <- base64enc::base64encode(tmp); unlink(tmp)
-  sprintf('<img src="data:image/png;base64,%s" style="max-width:100%%;">', b64)
-}
-
-make_html_table <- function(df, digits = 3) {
-  for (j in seq_along(df)) {
-    if (is.numeric(df[[j]])) df[[j]] <- round(df[[j]], digits)
-  }
-  knitr::kable(df, format = "html", row.names = FALSE,
-               table.attr = 'class="styled-table"')
-}
 
 
 # ============================================================================
@@ -287,10 +283,6 @@ if (length(target_sfes) > 0) {
     message("  SPLIT post-processing RCTD...")
     RCTD <- SPLIT::run_post_process_RCTD(RCTD)
 
-    rctd_rds <- file.path(step_dir, paste0(nm, "_rctd_results.rds"))
-    saveRDS(RCTD, rctd_rds)
-    message("  Saved: ", basename(rctd_rds))
-
     message("  Running SPLIT::purify()...")
     t0 <- Sys.time()
     res_split <- SPLIT::purify(
@@ -377,7 +369,7 @@ if (do_writeback_only || do_run_all) {
     message("  Checkpoint flag found — SFEs already updated. Skipping writeback.")
   } else {
 
-    # All RCTD meta CSVs must exist (sfe_tma_filtered joins from sfe_tma).
+    # All RCTD meta CSVs must exist.
     missing <- character(0)
     for (nm in ALL_SFES) {
       csv <- file.path(step_dir, paste0(nm, "_rctd_meta.csv"))
@@ -412,12 +404,10 @@ if (do_writeback_only || do_run_all) {
         stop(sprintf("SFE %s lacks polarization_UCell — rerun 03_ucell/04_reclassification first.", nm))
       }
 
-      # Archive current cell_label (06f)
+      # Keep the current cell_label (from 04_reclassification_polarization.R) as cell_label_06f
       cd$cell_label_06f <- as.character(cd$cell_label)
-      # Rename-mismatch fix: deposited SFEs / 06f cache still carry the legacy
-      # "Transitioning epithelium"; standardize to the canonical "Intermediate
-      # epithelium" before this vector is used as a fallback into the final
-      # cell_label and matched against sec_classes (idempotent — no-op if absent).
+      # Read a legacy "Transitioning epithelium" label as "Intermediate epithelium"
+      # before the vector is used as the fallback label (no-op if absent).
       cd$cell_label_06f[cd$cell_label_06f == "Transitioning epithelium"] <- "Intermediate epithelium"
 
       cd$rctd_first_type   <- rctd_meta$rctd_first_type
@@ -467,16 +457,6 @@ if (do_writeback_only || do_run_all) {
         message("  Adding purified counts assay...")
         purified_sub <- readRDS(purified_rds)
 
-        if (nm == "sfe_tma_filtered") {
-          shared_bc <- intersect(sfe_barcodes, colnames(purified_sub))
-          purified_sub <- purified_sub[, match(sfe_barcodes[sfe_barcodes %in% shared_bc],
-                                                colnames(purified_sub)), drop = FALSE]
-          if (ncol(purified_sub) != length(sfe_barcodes)) {
-            message(sprintf("  WARNING: %d / %d barcodes matched for purified counts",
-                            ncol(purified_sub), length(sfe_barcodes)))
-          }
-        }
-
         if (ncol(purified_sub) == ncol(sfe)) {
           full_purified <- assay(sfe, "counts")
           purified_genes <- rownames(purified_sub)
@@ -515,297 +495,6 @@ if (do_writeback_only || do_run_all) {
     writeLines(as.character(Sys.time()), flag_file)
     message("\n[", Sys.time(), "] All SFEs updated. Checkpoint flag written.")
   }
-
-
-  # ==========================================================================
-  # PART 3: QC Report
-  # ==========================================================================
-
-  message("\n[", Sys.time(), "] === PART 3: QC Report ===")
-
-  summary_files <- list.files(step_dir, pattern = "^06g_summary.*\\.csv$",
-                               full.names = TRUE)
-  if (length(summary_files) > 0) {
-    all_summaries <- rbindlist(lapply(summary_files, fread))
-    all_summaries <- unique(all_summaries, by = "sfe_name")
-    fwrite(all_summaries, file.path(step_dir, "06g_summary_combined.csv"))
-    message("  Combined summary: ", nrow(all_summaries), " samples")
-  }
-
-  comp_list <- list()
-  for (nm in ALL_SFES_WRITEBACK) {
-    sfe <- load_sfe(nm)
-    cd <- as.data.table(as.data.frame(colData(sfe)[, c("cell_label", "cell_label_06f",
-                                                         "rctd_first_type", "rctd_spot_class",
-                                                         "rctd_first_weight",
-                                                         "singler_label",
-                                                         "polarization_UCell")]))
-    cd[, sfe_name := nm]
-    comp_list[[nm]] <- cd
-    rm(sfe); gc(verbose = FALSE)
-  }
-  comp_dt <- rbindlist(comp_list)
-
-  # --- Fig A: RCTD spot_class distribution per sample -----------------------
-
-  spot_class_dt <- comp_dt[, .N, by = .(sfe_name, rctd_spot_class)]
-  spot_class_dt[, pct := 100 * N / sum(N), by = sfe_name]
-  spot_class_dt[is.na(rctd_spot_class), rctd_spot_class := "NA/unassigned"]
-
-  p_spot <- ggplot(spot_class_dt, aes(x = sfe_name, y = pct, fill = rctd_spot_class)) +
-    geom_col(width = 0.7) +
-    scale_fill_brewer(palette = "Set2", name = "RCTD spot class") +
-    labs(x = NULL, y = "% of cells",
-         title = "RCTD spot class distribution per SFE") +
-    theme_lab(base_size = 8) +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1),
-          legend.position = "bottom")
-
-  img_spot <- save_and_embed(p_spot, "rctd_spot_class_per_sfe",
-                              width = 1400, height = 600, res = 150)
-
-  # --- Fig B: Top label transitions (06f -> 06g) -----------------------------
-
-  conf_dt <- comp_dt[, .N, by = .(cell_label_06f, cell_label)]
-  conf_dt[, pct := 100 * N / sum(N)]
-
-  n_total   <- nrow(comp_dt)
-  n_changed <- sum(comp_dt$cell_label != comp_dt$cell_label_06f, na.rm = TRUE)
-  pct_changed <- round(100 * n_changed / n_total, 1)
-
-  top_changes <- conf_dt[cell_label_06f != cell_label][order(-N)][1:min(.N, 15)]
-
-  p_conf_top <- ggplot(top_changes, aes(x = reorder(paste0(cell_label_06f, " -> ", cell_label), N),
-                                         y = N)) +
-    geom_col(fill = "#cc4444", width = 0.7) +
-    geom_text(aes(label = format(N, big.mark = ",")), hjust = -0.1, size = 2.5) +
-    coord_flip() +
-    labs(x = NULL, y = "Number of cells",
-         title = "Top label transitions (06f -> 06g)",
-         subtitle = sprintf("%s / %s cells changed (%.1f%%)",
-                            format(n_changed, big.mark = ","),
-                            format(n_total, big.mark = ","), pct_changed)) +
-    theme_lab(base_size = 8)
-
-  img_conf_top <- save_and_embed(p_conf_top, "top_label_transitions",
-                                   width = 1200, height = 700, res = 150)
-
-  # --- Fig C: SecA/Intermediate/SecB composition before vs after -------------
-
-  sec_old <- comp_dt[cell_label_06f %in% sec_classes,
-                      .N, by = .(sfe_name, cell_label_06f)]
-  sec_old[, pct := 100 * N / sum(N), by = sfe_name]
-  sec_old[, scheme := "06f"]
-  setnames(sec_old, "cell_label_06f", "class")
-
-  sec_new <- comp_dt[cell_label %in% sec_classes,
-                      .N, by = .(sfe_name, cell_label)]
-  sec_new[, pct := 100 * N / sum(N), by = sfe_name]
-  sec_new[, scheme := "06g"]
-  setnames(sec_new, "cell_label", "class")
-
-  sec_comp <- rbind(sec_old, sec_new)
-  sec_comp[, class := factor(class, levels = sec_classes)]
-  sec_comp[, scheme := factor(scheme, levels = c("06f", "06g"))]
-
-  p_sec_comp <- ggplot(sec_comp, aes(x = scheme, y = pct, fill = class)) +
-    geom_col(width = 0.75, position = "stack") +
-    scale_fill_manual(values = class_pal, name = "Class") +
-    facet_wrap(~ sfe_name, nrow = 1) +
-    labs(x = NULL, y = "% of secretory cells",
-         title = "Secretory composition per SFE: 06f vs 06g (SPLIT-cleaned)") +
-    theme_lab(base_size = 7) +
-    theme(axis.text.x = element_text(angle = 0, size = rel(0.9)),
-          strip.text = element_text(size = rel(0.65)),
-          legend.position = "bottom")
-
-  img_sec_comp <- save_and_embed(p_sec_comp, "secretory_composition_06f_vs_06g",
-                                   width = 2000, height = 550, res = 150)
-
-  # --- Fig D: Per-sample % changed ------------------------------------------
-
-  change_dt <- comp_dt[, .(
-    stayed  = sum(cell_label == cell_label_06f, na.rm = TRUE),
-    changed = sum(cell_label != cell_label_06f, na.rm = TRUE)
-  ), by = sfe_name]
-  change_long <- melt(change_dt, id.vars = "sfe_name",
-                       variable.name = "status", value.name = "n")
-  change_long[, pct := 100 * n / sum(n), by = sfe_name]
-
-  p_change <- ggplot(change_long, aes(x = sfe_name, y = pct, fill = status)) +
-    geom_col(width = 0.7) +
-    scale_fill_manual(values = c(stayed = "grey70", changed = "#cc4444"),
-                       name = "Status") +
-    labs(x = NULL, y = "% of all cells",
-         title = "Proportion of cells that changed label (06f -> 06g SPLIT)") +
-    theme_lab(base_size = 8) +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-  img_change <- save_and_embed(p_change, "per_sfe_change_bar",
-                                width = 1200, height = 500, res = 150)
-
-  # --- Fig E: RCTD first_type vs singler_label concordance ------------------
-
-  concord_dt <- comp_dt[!is.na(rctd_first_type),
-                         .(n_agree = sum(rctd_first_type == singler_label),
-                           n_total = .N),
-                         by = sfe_name]
-  concord_dt[, pct_agree := round(100 * n_agree / n_total, 1)]
-
-  p_concord <- ggplot(concord_dt, aes(x = sfe_name, y = pct_agree)) +
-    geom_col(fill = "#228B22", width = 0.6) +
-    geom_text(aes(label = paste0(pct_agree, "%")), vjust = -0.3, size = 2.8) +
-    labs(x = NULL, y = "% agreement",
-         title = "RCTD first_type vs original SingleR label concordance") +
-    ylim(0, 105) +
-    theme_lab(base_size = 8) +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-  img_concord <- save_and_embed(p_concord, "rctd_vs_singler_concordance",
-                                  width = 1200, height = 500, res = 150)
-
-  # --- Biological plausibility checks ---------------------------------------
-
-  biop <- comp_dt[cell_label %in% sec_classes, .(
-    n_secretory      = .N,
-    n_SecA           = sum(cell_label == "SecA epithelium"),
-    n_Intermediate   = sum(cell_label == "Intermediate epithelium"),
-    n_SecB           = sum(cell_label == "SecB epithelium"),
-    pct_SecA_of_sec  = round(100 * sum(cell_label == "SecA epithelium") / .N, 2),
-    pct_Int_of_sec   = round(100 * sum(cell_label == "Intermediate epithelium") / .N, 2),
-    pct_SecB_of_sec  = round(100 * sum(cell_label == "SecB epithelium") / .N, 2),
-    median_pol_SecA  = round(median(polarization_UCell[cell_label == "SecA epithelium"], na.rm = TRUE), 4),
-    median_pol_Int   = round(median(polarization_UCell[cell_label == "Intermediate epithelium"], na.rm = TRUE), 4),
-    median_pol_SecB  = round(median(polarization_UCell[cell_label == "SecB epithelium"], na.rm = TRUE), 4)
-  ), by = sfe_name]
-  biop[, flag_low_SecB   := pct_SecB_of_sec < 5]
-  biop[, flag_high_SecB  := pct_SecB_of_sec > 30]
-  biop[, flag_pol_SecA_sign := median_pol_SecA >= 0]
-  biop[, flag_pol_SecB_sign := median_pol_SecB <= 0]
-  fwrite(biop, file.path(step_dir, "biological_plausibility_checks_06g.csv"))
-
-  # --- HTML tables ----------------------------------------------------------
-
-  tbl_spot    <- make_html_table(as.data.frame(spot_class_dt), digits = 1)
-  tbl_top_ch  <- make_html_table(as.data.frame(top_changes),   digits = 1)
-  tbl_concord <- make_html_table(as.data.frame(concord_dt),    digits = 1)
-  tbl_biop    <- make_html_table(as.data.frame(biop),          digits = 2)
-
-  if (exists("all_summaries")) {
-    tbl_summary <- make_html_table(as.data.frame(all_summaries), digits = 1)
-  } else {
-    tbl_summary <- "<p>No summary CSV found.</p>"
-  }
-
-  # --- HTML report ----------------------------------------------------------
-
-  html_css <- '
-<style>
-  body {font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
-    max-width:1200px;margin:0 auto;padding:30px 20px;background:white;color:#333;line-height:1.6;}
-  h1 {border-bottom:2px solid #333;padding-bottom:10px;font-size:1.8em;}
-  h2 {color:#444;border-bottom:1px solid #ddd;padding-bottom:5px;margin-top:40px;}
-  h3 {color:#555;margin-top:25px;}
-  .date {color:#888;font-size:0.9em;margin-bottom:20px;}
-  .meta {background:#f8f8f8;padding:12px 18px;border-radius:5px;margin:15px 0;font-size:0.9em;}
-  .toc  {background:#f8f8f8;padding:15px 25px;border-radius:5px;margin:20px 0;}
-  .toc a{color:#0066cc;text-decoration:none;}
-  .toc ul{list-style:none;padding-left:0;} .toc li{margin:6px 0;}
-  img {border:1px solid #eee;border-radius:3px;margin:10px 0;}
-  .note {background:#f0f7ff;border-left:3px solid #0066cc;padding:10px 15px;margin:15px 0;font-size:0.9em;}
-  .result {background:#f0fff0;border-left:3px solid #228B22;padding:10px 15px;margin:15px 0;font-size:0.9em;}
-  .styled-table{border-collapse:collapse;width:100%%;font-size:0.85em;margin:15px 0;}
-  .styled-table th{background:#f4f4f4;text-align:left;padding:8px 12px;border-bottom:2px solid #ddd;}
-  .styled-table td{padding:6px 12px;border-bottom:1px solid #eee;}
-</style>
-'
-
-  html_toc <- '
-<div class="toc"><strong>Table of Contents</strong>
-<ul>
-  <li><a href="#s1">1. RCTD/SPLIT Summary</a></li>
-  <li><a href="#s2">2. RCTD Spot Class Distribution</a></li>
-  <li><a href="#s3">3. Label Transitions (06f -> 06g)</a></li>
-  <li><a href="#s4">4. RCTD vs SingleR Concordance</a></li>
-  <li><a href="#s5">5. Secretory Composition Comparison</a></li>
-  <li><a href="#s6">6. Per-SFE Change Rates</a></li>
-  <li><a href="#s7">7. Biological Plausibility</a></li>
-</ul></div>
-'
-
-  meta_block <- paste0(
-    '<div class="meta">',
-    '<strong>Method:</strong> RCTD doublet mode (spacexr) + SPLIT purification<br>',
-    '<strong>Reference:</strong> ', basename(ref_path), ' (16 types)<br>',
-    '<strong>Seed:</strong> ', CFG$seed, ' (set before each RCTD run)<br>',
-    '<strong>Polarization thresholds (frozen from 06f):</strong> t_low = ',
-    sprintf("%.6f", t_low), ', t_high = ', sprintf("%.6f", t_high), '<br>',
-    '<strong>Secretory classification:</strong> RCTD first_type == "Secretory epithelium" -> ',
-    'classify_polarization(polarization_UCell, t_low, t_high)<br>',
-    '<strong>Total cells changed:</strong> ',
-    format(n_changed, big.mark = ","), ' / ', format(n_total, big.mark = ","),
-    ' (', pct_changed, '%)<br>',
-    '<strong>SFEs updated:</strong> ', length(ALL_SFES_WRITEBACK),
-    ' (cell_label overwritten; cell_label_06f preserves prior; purified assay added)',
-    '</div>'
-  )
-
-  html_body <- paste0(
-    '<!DOCTYPE html>\n<html>\n<head>\n<meta charset="utf-8">\n',
-    '<title>06g: SPLIT/RCTD Annotation Cleaning</title>\n',
-    html_css,
-    '\n</head>\n<body>\n',
-    '<h1>06g: SPLIT/RCTD Annotation Cleaning</h1>\n',
-    '<p class="date">Generated: ', format(Sys.time(), "%Y-%m-%d %H:%M"), '</p>\n',
-    '<p>SPLIT/RCTD deconvolution corrects transcript spillover in Xenium FFPE data. ',
-    'Each cell is modeled as a mixture of primary + secondary types; contaminant transcripts ',
-    'are removed. RCTD first_type replaces SingleR labels for non-secretory cells. ',
-    'For RCTD-confirmed secretory cells, existing UCell polarization scores and frozen ',
-    '06f thresholds assign SecA/Intermediate/SecB subtypes.</p>\n',
-    meta_block, '\n', html_toc,
-
-    '\n<h2 id="s1">1. RCTD/SPLIT Summary</h2>\n',
-    '<p>Per-sample timing, gene counts, and assignment rates.</p>\n',
-    tbl_summary, '\n',
-
-    '\n<h2 id="s2">2. RCTD Spot Class Distribution</h2>\n',
-    '<p>RCTD doublet mode classifies cells as singlet, doublet_certain, ',
-    'doublet_uncertain, or reject.</p>\n',
-    img_spot, '\n', tbl_spot, '\n',
-
-    '\n<h2 id="s3">3. Label Transitions (06f -> 06g)</h2>\n',
-    '<p>Top cell type transitions after SPLIT cleaning.</p>\n',
-    img_conf_top, '\n',
-    '<h3>Top transitions</h3>\n', tbl_top_ch, '\n',
-
-    '\n<h2 id="s4">4. RCTD vs SingleR Concordance</h2>\n',
-    '<p>Agreement between RCTD first_type and the original SingleR call ',
-    '(both using the 16-type reference system).</p>\n',
-    img_concord, '\n', tbl_concord, '\n',
-
-    '\n<h2 id="s5">5. Secretory Composition Comparison</h2>\n',
-    '<p>SecA/Intermediate/SecB proportions before (06f) and after (06g SPLIT). ',
-    'Note: the total secretory pool may change if RCTD reclassifies cells.</p>\n',
-    img_sec_comp, '\n',
-
-    '\n<h2 id="s6">6. Per-SFE Change Rates</h2>\n',
-    img_change, '\n',
-
-    '\n<h2 id="s7">7. Biological Plausibility</h2>\n',
-    '<p>Flags: <code>flag_low_SecB</code> if SecB%% < 5; ',
-    '<code>flag_high_SecB</code> if > 30; polarization sign flags check ',
-    'SecA/SecB medians sit on expected sides of 0.</p>\n',
-    tbl_biop, '\n',
-
-    '\n<hr>\n<p style="color:#888;font-size:0.8em;">',
-    'Report generated by spatial/03_annotation_polarization/05_clean_split_rctd.R on ',
-    format(Sys.time(), "%Y-%m-%d %H:%M:%S"), '</p>\n',
-    '</body>\n</html>'
-  )
-
-  writeLines(html_body, html_out)
-  message("[", Sys.time(), "] HTML report written: ", html_out)
-
 }
 
 # --- Session info -----------------------------------------------------------

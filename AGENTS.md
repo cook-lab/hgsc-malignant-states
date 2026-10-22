@@ -1,86 +1,44 @@
-# AGENTS.md — working in this repository
+# AGENTS.md: working in this repository
 
-Orientation for coding agents (and people) working in this repo. Read this first, then
-`README.md` for the full reproduction walkthrough. This is a **code** repository — the large data
-objects are deposited separately (see *Data*, below).
+Orientation for people and coding agents. Read [`README.md`](README.md) first. This is a code repository; the data
+are deposited separately ([`data/README.md`](data/README.md)).
 
-## What this is
+## Layout in one line each
 
-Reproducible analysis code for the manuscript *"Tumour architecture shapes polarized epithelial
-states that predict survival in high-grade serous ovarian cancer"* (Nersesian, Abou-Hamad, …,
-Cook, 2026). It integrates HGSC scRNA-seq (13 studies, ~2M cells) into an atlas, resolves a
-secretory-epithelial **polarization axis** — **SecA** (proliferative, progenitor-like) ↔ **SecB**
-(quiescent, mucosal-injury / keratin program) — and validates it with Xenium spatial
-transcriptomics, patient-derived organoids, and TCGA-OV.
+- `config/`: `config.yml` holds paths, seed, cohort and polarization thresholds. `config.py` and `config.R` load it.
+  `study_codes.{py,R}` translate lab identifiers to study codes.
+- `shared/`: `signatures.yml` (the 7 + 7 SecA / SecB genes) and `cellassign_markers_v3.csv`.
+- `atlas/`, `spatial/`: backend stages, numbered in run order. Each stage README lists its scripts with inputs and
+  outputs.
+- `models/`, `icon7/`, `*/as_run/`: trimmed copies of the scripts that ran in other lab project folders. The code that
+  wrote the outputs the paper uses is kept as it ran; plots and analyses not in the paper were removed, and each trimmed
+  copy opens with a note saying so. They keep their original project paths. Do not edit them; they record what was
+  run.
+- `figures/figureN/`: the scripts of one figure, named `NN_fig<number><panels>_<what>` in run order.
+  `figures/supplementary/` holds Figures S1–S18 and `figures/_prep/` the shared loaders and caches.
+- `tables/`: Supplementary Tables S1–S12. `build_all_tables.sh` runs them in order.
+- `figures/README.md`: the map from every panel, table and reported number to its scripts.
 
-The repo is **object-based**: the heavy `atlas/` and `spatial/` backends produce standardized
-objects + per-stage caches; the lightweight `figures/` and `tables/` scripts load those and render
-one panel/table each.
+## Conventions
 
-## Layout
-
-```
-config/   Single source of truth: paths, seed, cohort, signatures, polarization schema
-          (config.yml + config.py / config.R loaders)
-shared/   Canonical SecA/SecB signatures (signatures.yml) + CellAssign markers
-atlas/    scRNA-seq backend (Python / scanpy)            01_preprocess_qc … 08_xenium_reference
-spatial/  Xenium/Visium backend (R / SpatialFeatureExperiment)  00_setup … 09_external_validation
-figures/  ONE script per manuscript panel (load cache → plot → export); figureN/ + supplementary/
-tables/   Supplemental-data table generators
-docs/     METHODS.md (expanded methods), package versions
-data/     Pointers only — the large objects are NOT in the repo (see data/README.md)
-output/   Everything is written here (OUTPUT_ROOT); gitignored
-```
-
-Every stage directory has a `README.md` with an ordered *script → inputs→outputs → panel* table.
-`figures/README.md` is the full **panel → script** map (Fig 1A…7G, SF1…SF14, Supp Data 1–7).
-
-## Conventions — follow these
-
-- **Paths: never hardcode.** Resolve everything through `config/`.
-  - Python: `from config.config import CFG, obj, path, SEED` → `obj("atlas_final")`,
-    `path("output_root", "03_epithelial_nmf", "x.csv")`.
-  - R: `source(".../config/config.R")` → `cfg_obj("sfe_tma_filtered")`,
-    `cfg_path("output_root", "06_spatial_stats")`.
-- **Data lives outside the repo.** Inputs resolve under `DATA_ROOT`; set it (env var, or edit
-  `config.yml`) to the deposited bundle / a mounted drive. Outputs go under `OUTPUT_ROOT`
-  (default `./output`). `ORGANOIDS_ROOT` points at the PDO substrate. Note the cache contract:
-  **figure/table scripts read their input caches from `DATA_ROOT`** (the deposited bundle preserves
-  the original directory layout the scripts expect); **backend stages write fresh results to
-  `OUTPUT_ROOT`**.
-- **Naming:** polarization labels are **SecA / Intermediate / SecB / Ciliated**. "Intermediate"
-  was "Transitioning" in some original scripts — always use **Intermediate**.
-- **Signatures:** load SecA/SecB from `shared/signatures.yml` (the noBCAM 7-gene sets). Do **not**
-  inline divergent gene lists.
-- **Cohort:** the published cohort lives only in `config.yml` (`cohort:` — 8 whole-tissue samples,
-  FTE whole-tissue excluded, 97-patient TMA). Don't re-enumerate samples inline.
-- **Determinism:** seed stochastic steps from `config.seed` / `CFG$seed` (= 42).
-- **Polarization schema:** NMF **Factor_2** defines SecB; partition = SecA `<p50`,
-  Intermediate `p50–p75`, SecB `>=p75` (see `config.yml`).
-- **Script headers:** every backend/figure script opens with a
-  `PURPOSE / INPUTS / OUTPUTS / MANUSCRIPT PANEL(S) / RUNTIME TIER` docstring naming its caches and
-  producer — read it before editing, and keep the format if you add scripts.
-
-## Integration (trust boundary)
-
-The full pipeline from raw data **including multi-study integration** is in
-`atlas/01_preprocess_qc/` (`03_preprocess_hvg.py` … `07_finalize.py`; five methods benchmarked,
-**scANVI selected**). Re-running it needs a GPU and is **not required** to reproduce downstream
-results — the integrated atlas (`hgsc_atlas_scanvi.h5ad`) is **deposited as the entry object**.
-**Start downstream analysis from the deposited objects** (`config.objects`, e.g. `atlas_final`,
-`sfe_tma_filtered`). GPU training is not bit-identical across hardware; the deposited object is the
-canonical reference.
-
-## Reproduce one panel
-
-1. Environments: `conda env create -f environment.yml && conda activate epitype-py`;
-   `Rscript -e 'renv::restore(lockfile="renv.lock")'`.
-2. `export DATA_ROOT=/path/to/deposited/bundle` (see `data/README.md`).
-3. Look the panel up in `figures/README.md`, then run that one script:
-   `PYTHONPATH=. python figures/figure2/03_atlas_volcano_secA_secB.py` (or `Rscript figures/…R`).
-   `run_panel.sh <relpath-from-repo-root>` wraps this with logging and reports new outputs.
-
-## Where to look next
-
-`README.md` (walkthrough) · `figures/README.md` (panel→script map) · each stage `README.md` ·
-`docs/METHODS.md` (expanded methods) · `config/config.yml` (all paths, cohort, seed, signatures).
+- **Paths:** resolve inputs and outputs through `config/`, never with new absolute paths.
+  - Python: `from config.config import CFG, obj, path, SEED`
+  - R: `source("config/config.R")`, then `cfg_obj()` and `cfg_path()`
+  - Inputs sit under `DATA_ROOT` (the deposit) and outputs go to `OUTPUT_ROOT` (default `./output`; use one absolute
+    path for every step). Run scripts from the repository root.
+  - The copies (`as_run/`, `models/`, `icon7/`) are the exception: they keep the paths of the project they ran in.
+- **R locale:** R scripts need `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8`, otherwise `config.yml` is read incorrectly.
+- **States:** SecA / Intermediate / SecB / Ciliated.
+  - Atlas: NMF Factor 2 usage, with SecA < p50, Intermediate p50–p75 and SecB ≥ p75.
+  - Xenium: UCell polarization with frozen thresholds, SecA ≤ 0.109429 and SecB ≥ 0.210501.
+- **Signatures:** read SecA / SecB genes from `shared/signatures.yml`. Do not inline gene lists.
+- **Spatial cell labels:** use the SingleR label tables written by
+  `spatial/03_annotation_polarization/06_extract_singler.R` (`cell_label_singler`). Do not use `colData(sfe)$cell_label`.
+- **TMA cohort:** the final core set (378 patients, 503 cores). It is written by `spatial/02_qc/06b_final_tma_cores.py`
+  and read with `figures/_prep/final_tma_cores.py` or `spatial/00_setup/final_tma_cores.R` (`final_core_ids()`).
+- **De-identification:** samples appear only as study codes (WT01–WT08, TMA-P###, FTE01–15). Never write other sample
+  identifiers into code, file names or outputs.
+- **Seeds:** stochastic steps use `config.yml` `seed` (42).
+- **Script headers:** repository scripts open with a header on their purpose, inputs, outputs, manuscript panels and
+  runtime, most as PURPOSE / INPUTS / OUTPUTS / MANUSCRIPT PANEL(S) / RUNTIME TIER. Use that format when you add one.
+  The copies have their own headers, from the project they ran in.

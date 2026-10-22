@@ -2,7 +2,7 @@
 #
 # Usage:
 #   source(here::here("config", "config.R"))   # or relative path to this file
-#   sfe <- loadHDF5SummarizedExperiment(cfg_obj("sfe_tma_filtered"))
+#   sfe <- loadHDF5SummarizedExperiment(file.path(cfg_obj("sfe_dir"), "sfe_tma"))
 #   out <- cfg_path("output_root", "06_spatial_stats")
 #   set.seed(CFG$seed)
 #

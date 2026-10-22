@@ -1,118 +1,249 @@
-# Figure Panel Map
+# From the manuscript to the code
 
-Maps every manuscript panel to the repository script that generates it. This table is the source of truth for the panel→script mapping; each script's header docstring lists its exact inputs, outputs, and the panel(s) it supports. Paths are relative to the repo root (`hgsc-malignant-states/`).
+Every panel, supplementary table and reported number of the paper, with the script that draws it and the scripts that compute it, in run order. Paths are relative to the repository root.
 
-**Legend:** SecA = Secretory A (progenitor-like, NMF Factor 3); SecB = Secretory B (differentiated/adaptive, NMF Factor 2); Int = Intermediate. Per-figure scripts read cached intermediates produced by the `atlas/` and `spatial/` backends; the `figures/_prep/` helpers build shared caches (`meta.parquet`, atlas obs/UMAP parquets). External/known-gap panels are flagged in **Notes**.
+- **Atlas items** (Figs 1–2, S1–S9) load the atlas through `figures/_prep/atlas_final_tables.py`, which applies `figures/_prep/nath2021_fix.py`. That first step is not repeated in the rows below.
+- **Xenium items** (Figs 4–7, S11–S18) start from the SingleR label tables written by `spatial/03_annotation_polarization/06_extract_singler.R` ("SingleR tables" below), after the backend in [`spatial/README.md`](../spatial/README.md).
+- **Run order and settings.** Each figure folder's README gives the full run order and the environment variables. Output files keep the names the scripts write; where those carry an earlier panel letter, the folder README says which panel they are.
+- **`[code missing]`** marks a step whose code is not in this repository; its output is deposited.
 
-## Output location
+## Figure 1: an integrated atlas and the secretory polarization axis
 
-Every figure script writes its panel file(s) to a **per-figure subdirectory** under `OUTPUT_ROOT/figures/`:
-`figure1/` … `figure7/`, `supplementary/` (SF1–SF14), and the placeholder dirs `figure_icon7_bevacizumab/` /
-`figure_ccle_smac_mimetics/`. Nothing is written to the `figures/` root. Each panel is exported as both `.svg`
-(vector, for assembly) and `.png` (raster preview); spatial/ROI scripts may also emit `.pdf`.
+Folder: [`figures/figure1/`](figure1/README.md)
 
-## Main figures
+| Panel | Drawn by | Computed by (run order) | Note |
+|---|---|---|---|
+| 1a | `figures/figure1/01_fig1a_atlas_level1_umap.py` | — | UMAP = X_umap of deposited `hgsc_atlas_final.h5ad` (`atlas/01_preprocess_qc/as_run/03b_refilter_umap.py`); 13 level-1 lineages (`atlas/02_annotation`); atlas `OUTPUT_ROOT` |
+| 1b | `figures/figure1/02_fig1bcdek_atlas_study_contribution.py` | `figures/figure1/02_fig1bcdek_atlas_study_contribution.py` | one render for b-e,k (atlas_study_contribution_with_epi_composition); prints cells/studies/patients; `OUTPUT_ROOT/figure1/atlas_study_contribution_values.csv` |
+| 1c | `figures/figure1/02_fig1bcdek_atlas_study_contribution.py` | `figures/figure1/02_fig1bcdek_atlas_study_contribution.py` | metastatic site per study (Vazquez-Garcia ascites fix: `atlas/02_annotation/as_run/fix_metastatic_site_vazquez.py`) |
+| 1d | `figures/figure1/02_fig1bcdek_atlas_study_contribution.py` | `figures/figure1/02_fig1bcdek_atlas_study_contribution.py` | treatment status per study (Nath 2021 relabelling via `nath2021_fix.py`; Zhang 2022 fix `atlas/02_annotation/as_run/12a_fix_zhang2022_treatment_status.py`) |
+| 1e | `figures/figure1/02_fig1bcdek_atlas_study_contribution.py` | `figures/figure1/02_fig1bcdek_atlas_study_contribution.py` | level-1 cell-type composition per study |
+| 1f | `figures/figure1/03_fig1f_epithelial_secretory_ciliated_umap.py` | — | epithelial UMAP = UMAP1/UMAP2 of deposited `meta.parquet` (`atlas/03_epithelial_nmf/as_run/fig_secretory_polarization_00_prepare_data.py`); 575,366 / 6,678 asserted in `atlas_final_tables.py` |
+| 1g | `figures/figure1/04_fig1g_polarization_pc_alignment.py` | `figures/_prep/fig1g_polarization_pc_alignment.py` → `figures/figure1/04_fig1g_polarization_pc_alignment.py` | reads deposited CopyKAT output/19_cnv/per_sample (`atlas/05_cnv/as_run`) and epithelial layers/counts; 250 samples with >=150 aneuploid epithelial cells; score = scanpy score_genes SecB-SecA with the organoid sets listed in the prep script |
+| 1h | `figures/figure1/05_fig1h_secA_nmf_factor_umap.py` | — | Factor_3 usage from deposited 11d NMF (`atlas/03_epithelial_nmf/as_run/11d_epithelial_nmf.py`; port verified) |
+| 1i | `figures/figure1/06_fig1i_secB_nmf_factor_umap.py` | — | Factor_2 usage (config polarization.factor) |
+| 1j | `figures/figure1/07_fig1j_program_factor_umaps.py` | — | four sub-panels: Factor_5 G2M, Factor_6 AP-1, Factor_4 IFN, Factor_9 EMT; `tables/05_tableS5` parses PANELS from this script |
+| 1k | `figures/figure1/02_fig1bcdek_atlas_study_contribution.py` | `figures/figure1/02_fig1bcdek_atlas_study_contribution.py` | state per study; state rule (Factor_2 p50/p75) in `atlas_final_tables.py` |
+| 1l | `figures/figure1/08_fig1lm_clone_composition_and_polarization.py` | `figures/figure1/08_fig1lm_clone_composition_and_polarization.py` | writes atlas_clone_polarization_and_composition_lm (l and m stacked); CopyKAT subclones >=20 cells joined on sample_id_deposited |
+| 1m | `figures/figure1/08_fig1lm_clone_composition_and_polarization.py` | `figures/figure1/08_fig1lm_clone_composition_and_polarization.py` | writes atlas_clone_polarization_and_composition_lm (l and m stacked); Factor_2 usage per clone, dashed lines = Factor_2 p50/p75 |
 
-| Panel | Script | Notes |
-|---|---|---|
-| Fig 1A | `figures/figure1/01_atlas_level1_umap.py` | |
-| Fig 1B,1C,1D,1E,1I | `figures/figure1/02_atlas_study_contribution.py` | study contribution + epithelial composition |
-| Fig 1F | `figures/figure1/03_atlas_epithelial_secretory_ciliated_umap.py` | |
-| Fig 1G | `figures/figure1/04_atlas_SecA_nmf_factor_umap.py` | Factor_3 / SecA |
-| Fig 1H | `figures/figure1/05_atlas_SecB_nmf_factor_umap.py` | Factor_2 / SecB |
-| Fig 1J | `figures/figure1/06_atlas_cnv_alluvial.py` | consumes `atlas/05_cnv` within-clone coexistence cache |
-| Fig 2A | `figures/figure2/01_atlas_radar_characterization.py` | PROGENy/Hallmark/DoRothEA/Flux radar |
-| Fig 2B | `figures/figure2/02_atlas_g2m_barplot.py` | cell-cycle cache from NMF-characterization prep helper |
-| Fig 2C | `figures/figure2/03_atlas_volcano_secA_secB.py` | SecA/SecB markers from `shared/signatures.yml` |
-| Fig 2D,2E | `figures/figure2/04_atlas_site_secb_shift.py` | |
-| Fig 2F,2G | `figures/figure2/05_atlas_treatment_secb_shift.py` | |
-| Fig 3A | `figures/figure3/01_organoids_models_umap.R` | **EXTERNAL** organoid data (`organoids_root`); TRUST-EXISTING per author decision |
-| Fig 3B | `figures/figure3/02_organoids_secB_ucell_by_model.py` | **EXTERNAL** organoid dependency |
-| Fig 3C | *(no in-repo generator)* | **EXTERNAL / KNOWN GAP**: flow cytometry, no in-repo script |
-| Fig 3D | `figures/figure3/03_organoids_secB_timecourse.py` | **EXTERNAL** organoid dependency |
-| Fig 3E | `figures/figure3/04_organoids_secB_perturbations.py` | **EXTERNAL** organoid dependency |
-| Fig 3F | `figures/figure3/05_organoids_g2m_barplot.py` | **EXTERNAL** organoid dependency |
-| Fig 3G | `figures/figure3/06_organoids_radar_characterization.py` | **EXTERNAL** organoid dependency |
-| Fig 3H | `figures/figure3/07_atlas_tcga_subtype_epitype.py` | atlas/ConsensusOV, in-repo (n=96) |
-| Fig 4A,4B | `figures/figure4/01_xenium_composition_by_tissue_dendro.py` | |
-| Fig 4C | `figures/figure4/02_xenium_whole_tissue_snapshot.R` | also drives SF10A via `all` arg |
-| Fig 4D | `figures/figure4/03_fig2d_roi_celltype.R` | **FLAG**: colours by in-object SingleR/pre-06f labels, not 06f reclassification |
-| Fig 4E | `figures/figure4/04_lee_bivariate_segregation.py` | |
-| Fig 4F | `figures/figure4/05_bilisa_regime_by_label.py` | |
-| Fig 4G | `figures/figure4/06_gam_microenvironment_polarization.R` | |
-| Fig 4H | `figures/figure4/07_xenium_vascular_distance_paired.py` | |
-| Fig 4I | `figures/figure4/08_xenium_roi_OTB_2384_vascular_distance.R` | |
-| Fig 4J | `figures/figure4/09_xenium_epi_density_paired.py` | |
-| Fig 4K | `figures/figure4/10_xenium_roi_OTB_2384_pathway_panels.R` | |
-| Fig 5A | `figures/figure5/01_gam_epithelial_pathways_polarization.R` | |
-| Fig 5B,5C | `figures/figure5/02_roi_OTB_2384_roi06_svgs.R` | |
-| Fig 5D,5E | `figures/figure5/03_morphometrics_paired.py` | |
-| Fig 5F | `figures/figure5/04_atlas_seca_secb_autocrine_shift.py` | **KNOWN ISSUE**: generator reproduces the panel exactly, but thresholds on expression magnitude (`lrscore>0.5`), not significance |
-| Fig 5G | `figures/figure5/05_gam_epithelial_genes_polarization.R` | |
-| Fig 5H | `figures/figure5/06_roi_SP24_24824_zoom_genes.R` | cell-type map over the full SP24_24824 ROI (`SP24_24824_roi_celltype_full.*`); same script renders 5I |
-| Fig 5I | `figures/figure5/06_roi_SP24_24824_zoom_genes.R` | 4-gene full-ROI maps (CTNNB1/ITGB5/MMP7/ICAM1); shares script with 5H |
-| Fig 6A,6C | `figures/figure6/01_tma_hypoxia_gradient_cores.R` | writes `gradient_metrics.csv` consumed by scripts 03/04 |
-| Fig 6B | `figures/figure6/02_niche_immune_composition_gam.R` | |
-| Fig 6D | `figures/figure6/03_tma_gradient_cores_immune_highlight_svgs.R` (immune) + `04_tma_gradient_cores_secb_highlight.R` (SecB) | |
-| Fig 6E,6F | `figures/figure6/05_fig_exhaustion_ucell.R` | |
-| Fig 6G | `figures/figure6/06_gam_neighborhood_immunomod_genes_polarization.R` | |
-| Fig 6H | `figures/figure6/07_gam_macrophage_focal_polarization.R` | |
-| Fig 6I,6J | `figures/figure6/08_fig_macrophage_apoptosis_prolif_morphology.R` | **KNOWN ISSUE (6J)**: reproduces 6/8 p=0.042 vs published 8/8 p=0.008; migrated faithfully, not changed |
-| Fig 6K,6L | `figures/figure6/09_xenium_roi_whole_tissue_investigation.R` | **FLAG**: requires `<sample>` CLI arg; renders nothing without it |
-| Fig 7A,7B | `figures/figure7/01_xenium_forest_cox.R` | Cox forest OS/PFS |
-| Fig 7C,7D | `figures/figure7/02_xenium_protein_correlation_row.py` | |
-| Fig 7E,7F,7G | `figures/figure7/03_tcga_km_forest.R` | TCGA KM + stepwise Cox; BayesPrism covariate-set caveat |
+## Figure 2: programs, cell cycle and distribution of SecA and SecB across sites and treatment
 
-## Pending / placeholder panels (not yet assigned a manuscript number)
+Folder: [`figures/figure2/`](figure2/README.md)
 
-| Panel | Script | Notes |
-|---|---|---|
-| *TBD (expanded Fig 7)* | `figures/figure_icon7_bevacizumab/01_icon7_bev_slope_reversal.R` | **PLACEHOLDER** — ICON7/GSE140082 bevacizumab external validation (SecB prognostic under chemo, abolished by bev). Reads `cfg_obj("icon7_cohort")`; in-script per-arm Cox. Rename dir + assign panel once decided. Source module + full report: `…/2026_final_xenium_analysis/davids side quests/ICON7/`. |
-| *TBD (supplementary / mechanistic)* | `figures/figure_ccle_smac_mimetics/02_prism_smac_mimetics.R` (main) + `03_crispr_targeted_nfkb.R` (support); prereq `01_score_hgsc_lines.R` | **PLACEHOLDER** — CCLE/DepMap 24Q4 + PRISM 25Q2. SecB-polarized HGSC lines are selectively sensitive to SMAC mimetics (LCL-161 ρ=−1.00 p=0.017; GDC-0152 ρ=−0.71 p=0.088; birinapant ρ=−0.50), but NOT to chemo controls; single-gene BIRC3 Chronos is null/opposite (ρ=+0.22) — IAP family redundancy interpretation — while upstream TRAF2 trends (ρ=−0.45). Reads `cfg_obj("ccle_line_scores")` + raw Chronos/PRISM. Source module + report: `…/davids side quests/ccle_depmap/`. |
+| Panel | Drawn by | Computed by (run order) | Note |
+|---|---|---|---|
+| 2a | `figures/figure2/01_fig2a_radar_characterization.py` | `figures/_prep/fig2a_scfea_all_cells.py` → `figures/_prep/fig2a_functional_state_summaries.py` | per-cell PROGENy/Hallmark/DoRothEA = deposited output of `atlas/04_functional/as_run/21_epitype_functional_characterization.py`; scFEA on all 575,366 cells; panel = atlas_radar_characterization_1x4 |
+| 2b | `figures/figure2/02_fig2bcde_cellcycle_composition_paired.py` | `figures/_prep/fig2b_cell_cycle_phase.py` → `figures/figure2/02_fig2bcde_cellcycle_composition_paired.py` | row2_b_cell_cycle; `row2_stats.csv` panel b |
+| 2c | `figures/figure2/02_fig2bcde_cellcycle_composition_paired.py` | `figures/_prep/fig2b_cell_cycle_phase.py` → `figures/figure2/02_fig2bcde_cellcycle_composition_paired.py` | row2_c_composition; `row2_stats.csv` panel c (legend n's); fig2b prep must run first |
+| 2d | `figures/figure2/02_fig2bcde_cellcycle_composition_paired.py` | `figures/_prep/fig2b_cell_cycle_phase.py` → `figures/figure2/02_fig2bcde_cellcycle_composition_paired.py` | row2_d_paired_sites; paired Wilcoxon; `row2_stats.csv` panel d |
+| 2e | `figures/figure2/02_fig2bcde_cellcycle_composition_paired.py` | `figures/_prep/fig2b_cell_cycle_phase.py` → `figures/figure2/02_fig2bcde_cellcycle_composition_paired.py` | panel = row2_e_paired_treatment_secb_pct (+ `row2_e_variant_secb_pct_stats.csv`) |
+| 2f | `figures/figure2/03_fig2f_subtype_state_boxes.py` | `figures/_prep/fig2f_consensusov.py` → `figures/_prep/fig2f_consensusov.R` → `figures/_prep/fig2f_consensusov_multiseed.R` → `figures/figure2/03_fig2f_subtype_state_boxes.py` | run with --no-intermediate (writes atlas_subtype_epitype_grouped_boxes_SecA_SecB + `_stats_SecA_SecB.csv`); multiseed R run by hand, 25 seeds; 96 samples / 77 patients asserted |
+| 2g | `figures/figure2/04_fig2g_pseudobulk_volcano.py` | `figures/figure2/04_fig2g_pseudobulk_volcano.py` | PyDESeq2 ~sample + epitype; 261 tumours / 522 profiles asserted; DE table also read by Table S6 and Fig 6h (from the Xenium `OUTPUT_ROOT/figure2` copy) |
 
-## Supplementary figures
+## Figure 3: polarization in patient-derived organoids and the KPCA.B mouse model
 
-| Panel | Script | Notes |
-|---|---|---|
-| SF1A-C | `figures/supplementary/01_SF1_atlas_qc_metrics_by_study.py` | cache via `_prep/00_extract_atlas_obs.py` |
-| SF2A | `figures/supplementary/02_SF2A_atlas_study_umap.py` | |
-| SF2B | `figures/supplementary/03_SF2B_atlas_integration_study_composition.py` | cache via `_prep/00b_extract_integration_umaps.py` |
-| SF2C | `figures/supplementary/04_SF2C_atlas_integration_per_study_umaps.py` | |
-| SF3A-C | `figures/supplementary/05_SF3A_atlas_clinical_umaps.py` | |
-| SF3D-F | `figures/supplementary/06_SF3D_atlas_genomic_umaps.py` | |
-| SF4A | `figures/supplementary/07_SF4A_atlas_annotation_validation.py` | |
-| SF4B | `figures/supplementary/08_SF4B_atlas_canonical_markers_dotplot.py` | reads `09f` dotplot_stats + lilra4_stats |
-| SF4C | `figures/supplementary/09_SF4C_atlas_cnv_aneuploid_by_celltype.py` | n=251 |
-| SF5 | `figures/supplementary/10_SF5_atlas_nmf_factor_umaps.py` | |
-| SF6A-B | `figures/supplementary/11_SF6_atlas_secAB_expression_umaps.py` | SecA panels now use FBXO21 (signatures.yml) in place of source WT1 |
-| SF7 | `figures/supplementary/12_SF7_atlas_cnv_validation.py` | **KNOWN ISSUE**: caption "3735 clones" is a typo for **375** |
-| SF8 | `figures/supplementary/13_SF8_atlas_functional_heatmap.py` | scFEA flux label-map fixed |
-| SF9A-E | `figures/supplementary/14_SF9_atlas_epitype_by_metadata.py` | **FLAG**: source emits 6 panels; published PDF shows 5 (met-site dropped) |
-| SF10A | `figures/figure4/02_xenium_whole_tissue_snapshot.R` (`all` arg) | shared with Fig 4C |
-| SF10B | `figures/supplementary/15_SF10B_tma_composition_spatial.R` | |
-| SF10C | `figures/supplementary/16_SF10C_xenium_roi_and_core_celltype.R` | **FLAG**: low-confidence; no dedicated FTE-core gallery (cores mode defaults to TMA cores) |
-| SF11 | `figures/supplementary/17_SF11_atlas_xenium_wt_polarization_violins.py` | **FLAG**: WT-only strip; combined 3-cohort assembler missing (per LINEAGE) |
-| SF12,SF13,SF14 | `figures/supplementary/18_SF12_SF13_SF14_suppl_per_sample_gams.R` | SF12A-D / SF13A-S / SF14A-H |
+Folder: [`figures/figure3/`](figure3/README.md)
 
-## Supplementary data tables
+| Panel | Drawn by | Computed by (run order) | Note |
+|---|---|---|---|
+| 3a | `figures/figure3/01_fig3a_pdo_models_umap.R` | `models/organoids/scripts/03_create_seurat_untreated_baseline.R` | 8 models, 10,455 cells |
+| 3b | `figures/figure3/02_fig3b_pdo_secB_by_model.py` | `atlas/03_epithelial_nmf/as_run/11d_*`, `atlas/03_epithelial_nmf/as_run/17_*`, `atlas/03_epithelial_nmf/as_run/18a_*` → `models/organoids/scripts/03_create_seurat_untreated_baseline.R` → `atlas/03_epithelial_nmf/as_run/18b_ucell_atlas_scoring.R` → `models/organoids/scripts/04_secretory_polarization_v4_UCell_aligned.R` → `models/organoids/scripts/04v5_secB_only_comparison.py` | exact two-sided Mann–Whitney on model medians, 4 vs 4, p = 0.029 |
+| 3c–e | `figures/figure3/03_fig3cde_opto98_secB_violins.py` | as Fig 3b to 18b → `models/organoids/scripts/08_opto98_ucell_aligned.R` | writes secB_DEF_combined_violin (earlier letters D–F); OPTO98 object writer [code missing] |
+| 3f–h | `models/organoids/scripts/12h_panels_fgh_layout.py` | `models/organoids/scripts/11c_atlas_pseudobulk.py` → `10a_geo_cluster_annotate.R` → `12_gse284507_spheroid_organoid_secAB.R` | writes fig3F_marker_vs_function, fig3GH_shared |
+| 3i | `models/kpca_mouse/scripts/41b_export_1p8in.py` | `models/kpca_mouse/upstream/` → `models/kpca_mouse/scripts/01` → 02 → 15b → 18a → 18, 19 → 21a → 21 → 22, 22b → 24 → 27 → 27b, 27c → 31 → 33 | 20,598 cells |
+| 3j | `figures/figure3/04_fig3j_kpca_polarization_7plus7.py` | KPCA.B chain to 33 + `02_orthologs.py` | 7 + 7 orthologue UCell; 12,429 tumour cells |
+| 3k | `figures/figure3/05_fig3k_kpca_krt7_umap.py` | KPCA.B chain to 33 |  |
+| 3l | `figures/figure3/06_fig3l_krt7_ihc_scale_bar.py` | — | on the QuPath snapshot (manual export); 0.22 µm/px |
 
-| Item | Script | Notes |
-|---|---|---|
-| Supp Data 1 | `tables/05_supp_data_1_cell_metadata.py` | newly authored stub; run after `atlas/02_annotation/12a` treatment_status fix |
-| Supp Data 2 | `tables/06_supp_data_2_level1_de.py` | newly authored stub (level-1 Wilcoxon DE) |
-| Supp Data 3 | `tables/07_supp_data_3_ciliated_vs_secretory_de.py` | newly authored stub (logic from excluded 11v4 sandbox) |
-| Supp Data 4 | `tables/01_supp_data_4_nmf_loadings.py` | NMF gene loadings (tidy reshape of `11d`) |
-| Supp Data 5 | `tables/02_supp_data_5_xenium_gene_panel.R` | Xenium gene panel + probe QC |
-| Supp Data 6 | `tables/03_supp_data_6_pathway_gene_sets.R` | 37 UCell pathway modules |
-| Supp Data 7 | `tables/04_supp_data_7_autocrine_lr.py` | autocrine SecA/SecB L-R pairs; curated merge (Fig 5F caveat applies) |
+## Figure 4: SecB cells co-localize in avascular, hypoxic niches
 
-## Prep helpers (shared caches, not panels)
+Folder: [`figures/figure4/`](figure4/README.md)
 
-- `figures/_prep/00_extract_atlas_obs.py` — atlas obs QC caches (SF1)
-- `figures/_prep/00b_extract_integration_umaps.py` — integration UMAP caches (SF2B/C)
-- `figures/_prep/01_export_tma_barcode_patient_map.py` — TMA barcode->patient map for Fig 4A/B
-- `figures/_prep/fig_secretory_polarization_00_prepare_data.py` — shared `schema_nmf` `meta.parquet` (Fig 1F/G/H/I, 2C/D/E/G, SF5/6/9)
+| Panel | Drawn by | Computed by (run order) | Note |
+|---|---|---|---|
+| 4a | `figures/figure4/02_fig4a_composition_plot.py` | SingleR tables → `spatial/02_qc/05b_core_qc.R` → `spatial/02_qc/06b_final_tma_cores.py` → `figures/figure4/01_fig4a_composition_table.py` | reads the step-01 table (COMP_CSV overrides); FTE 15 cores, WT 8, TMA 378 patients |
+| 4b,c | `figures/figure4/03_fig4bc_wt01_celltype_maps.R` | SingleR tables | written as fig4C_* / fig4D_* (earlier letters); ROI box added at assembly |
+| 4d | `figures/figure4/05_fig4d_bivariate_moran_plot.py` | `06_extract_singler.R` → `06b_final_tma_cores.py` → `figures/figure4/04_fig4d_bivariate_moran.R` | sign test WT n = 8 (p = 0.008); Wilcoxon TMA n = 334 |
+| 4e | `figures/figure4/07_fig4e_bilisa_plot.py` | `06_extract_singler.R` → `figures/figure4/06_fig4e_bilisa.R` | 89% of SecB cells in SecB neighbourhoods |
+| 4f | `figures/figure4/10_fig4f_gam_plot.py` | `06_extract_singler.R` → `spatial/04_pathway_scoring/04c_pathway_scoring_allcells.R` → `figures/figure4/08_fig4f_gam_features.R` → `09_fig4f_gam_fit.R` | 1,235,350 secretory cells; per-tissue tests in `figures/supplementary/21_figS16-18_per_sample_gams.R` |
+| 4g | `figures/figure4/12_fig4g_vascular_distance_plot.py` | `06_extract_singler.R` → `06b_final_tma_cores.py` → `figures/figure4/11_fig4g_vascular_distance.py` | WT p = 0.016; TMA n = 361 |
+| 4h | `figures/figure4/13_fig4h_wt01_roi_vascular_distance.R` | `06_extract_singler.R` | same ROI as 4c |
+| 4i | `figures/figure4/15_fig4i_local_density_plot.py` | `06_extract_singler.R` → `06b_final_tma_cores.py` → `figures/figure4/14_fig4i_local_density.py` | WT n = 8, p = 0.031; TMA n = 361 |
+| 4j | `figures/figure4/16_fig4j_wt01_roi_hypoxia.R` | `spatial/04_pathway_scoring/04`, `spatial/04_pathway_scoring/04c` | hypoxia UCell map |
 
-## Panel-map completeness
+## Figure 5: SecB cells and macrophages adapt to hypoxic niches
 
-All numbered manuscript panels Fig 1A..7G, SF1..SF14, and Supp Data 1-7 are accounted for. The only panels **without an in-repo generator** are the documented external/known-gap panels: **Fig 3A,3B,3D,3E,3F,3G** (external organoid data, TRUST-EXISTING) and **Fig 3C** (external flow cytometry). **Fig 5F** has a generator and reproduces exactly, but carries a statistical-threshold caveat (thresholds on `lrscore` magnitude, not significance).
+Folder: [`figures/figure5/`](figure5/README.md)
+
+| Panel | Drawn by | Computed by (run order) | Note |
+|---|---|---|---|
+| 5a | `figures/figure5/11_fig5_compose_panels.py` | `06_extract_singler.R` → `04c_pathway_scoring_allcells.R` → `figures/figure5/01_fig5a_epithelial_programs_build.R` → `02_fig5a_epithelial_programs_fit.R` |  |
+| 5b | `figures/figure5/11_fig5_compose_panels.py` | `06b_final_tma_cores.py` → `figures/figure5/03_fig5b_nuclear_area.R` | medians in the text: `figures/figure5/04_fig5b_nuclear_area_medians.py`; WT p = 0.008; TMA n = 361 |
+| 5c,d,e,g,h | `figures/figure5/11_fig5_compose_panels.py` | `04c_pathway_scoring_allcells.R` → `figures/figure5/05_fig5cdegh_roi_export.R` | written as Fig5c_* (c, d), Fig5d_* (e), Fig5f_* (g), Fig5g_* (h) |
+| 5f | `figures/figure5/11_fig5_compose_panels.py` | 04c → `figures/figure5/06_fig5f_immune_niche_build.R` → `07_fig5f_immune_niche_fit.R` | written as Fig5e_*; macrophages 13.4 → 32.6%, B cells 3.8 → 0.7% |
+| 5i | `figures/figure5/11_fig5_compose_panels.py` | 04c → `figures/figure5/08_fig5i_macrophage_programs_build.R` → `09_fig5i_macrophage_programs_fit.R` | written as Fig5h_* |
+| 5j | `figures/figure5/11_fig5_compose_panels.py` | `06b_final_tma_cores.py` → `figures/figure5/10_fig5j_macrophage_area.R` | written as Fig5i_*; WT p = 0.008; TMA n = 297 |
+
+## Figure 6: SecB epithelium and hypoxic macrophages
+
+Folder: [`figures/figure6/`](figure6/README.md)
+
+| Panel | Drawn by | Computed by (run order) | Note |
+|---|---|---|---|
+| 6a–d | `figures/figure6/13_fig6_draw_panels.py` | `figures/figure6/01_fig6abcd_visium_hd_bins.py` → `figures/figure6/01b_fig6c_visium_hd_bins_extra_genes.py` (6c CA9) → `figures/figure6/fig6_roi_picker/roi_server.py` (interactive ROI, `fig6_rois.json`) | Visium HD WT01; Visium HD staging manual |
+| 6e | `figures/figure6/13_fig6_draw_panels.py` | `figures/figure6/02_fig6e_visium_hd_niche_volcano.py` (16 µm) | content adjustment and stromal classes applied in 13 (as Table S10) |
+| 6f | `figures/figure6/13_fig6_draw_panels.py` | `figures/_prep/nath2021_fix.py` → `figures/figure6/08_fig6fh_atlas_macrophage_pseudobulk.py` → `figures/figure6/08b_fig6f_atlas_subtype_dotmatrix.py`; `spatial/05_count_export/as_run/02_deg_precompute.R` → `figures/figure6/04_fig6fhi_xenium_niche_macrophages.R` → `05_fig6fh_xenium_reciprocal_effects.R` | bridge row = Xenium niche vs control macrophages, n = 8 |
+| 6g | `figures/figure6/13_fig6_draw_panels.py` | `spatial/02_qc/06b_final_tma_cores.py` → `figures/figure5/05_fig5cdegh_roi_export.R` → `figures/figure6/06_fig6g_macrophage_secB_neighbours.py` | paired Wilcoxon; WT n = 8, TMA n = 311 |
+| 6h | `figures/figure6/13_fig6_draw_panels.py` | `figures/figure6/03` → 04 → 05 → 07 → 08 → 09 → 10 (+ Fig 2g DE table) → `11_fig6h_concordance.py` | atlas macrophage n = 181; atlas SecB n = 261 tumours |
+| 6i | `figures/figure6/13_fig6_draw_panels.py` | `figures/figure6/04_fig6fhi_xenium_niche_macrophages.R` → fig6_roi_picker/roi_server.py (ROI "example 2 (700 um)", WT02) | bottom-row files are named Fig6j_* |
+
+## Figure 7: survival, protein correlates and bevacizumab response
+
+Folder: [`figures/figure7/`](figure7/README.md)
+
+| Panel | Drawn by | Computed by (run order) | Note |
+|---|---|---|---|
+| 7a–d | `figures/figure7/02_fig7abcd_tma_survival_row.R` | `spatial/02_qc/06b_final_tma_cores.py` → `spatial/06_clinical/as_run/clean_clinical_data.R`, `spatial/06_clinical/as_run/explore_clinical_associations.Rmd` → `spatial/06_clinical/as_run/coeur_clinical_extract.py` (TMA B) → `figures/figure7/01_fig7abcd_tma_cox_km_tables.R` | OS n = 104 (35 vs 35), PFS n = 103 (35 vs 34); Cox per SD, BH q across 6 (Table S11); output stem _ABC |
+| 7e,f | `figures/figure7/04_fig7ef_protein_correlation_plot.py` | `spatial/02_qc/06b_final_tma_cores.py` → `figures/figure7/03_fig7ef_protein_correlation.R` | 177 TMA A cores (95 patients) |
+| 7g–j | `figures/figure7/05_fig7ghij_tcga_km_forest.R` | `atlas/07_deconvolution_survival/as_run/22a`, `atlas/07_deconvolution_survival/as_run/22b` + `atlas/03_epithelial_nmf/as_run/11e` → `atlas/07_deconvolution_survival/as_run/22d_signature_survival.py` | TCGA input preparation [code missing]; output stem _EFG |
+| 7k–n | `figures/figure7/06_fig7klmn_icon7_survival_row.R` | `icon7/scripts/00` → 01 → 02 → 03 → `04_descriptive.R` (`cohort_filtered.tsv`) | n = 191 (96 / 95); output stem _HIJ |
+
+## Supplementary Figures S1–S18
+
+Folder: [`figures/supplementary/`](supplementary/README.md). `figures/supplementary/23_figS1-18_composites.py` assembles the lettered pages.
+
+| Figure | Drawn by | Computed by (run order) | Note |
+|---|---|---|---|
+| S1-S18 pages | `figures/supplementary/23_figS1-18_composites.py` | manual copy/rename of renders to SuppFig<N>_* names | reads/writes the panel folder on its D line; macOS font on its FONT line |
+| S1a | `figures/supplementary/01_figS1_atlas_qc_metrics_by_study.py` | `atlas/01_preprocess_qc/as_run/02_concat_qc_doublets.ipynb` → `figures/supplementary/00_figS1_extract_atlas_obs.py` | render SF1A_atlas_qc_total_counts_by_study -> SuppFig1a_*; extractor needs `OUTPUT_ROOT` set, input folder on its ATLAS line |
+| S1b | `figures/supplementary/01_figS1_atlas_qc_metrics_by_study.py` | `atlas/01_preprocess_qc/as_run/02_concat_qc_doublets.ipynb` → `figures/supplementary/00_figS1_extract_atlas_obs.py` | render SF1B_* -> SuppFig1b_* |
+| S1c | `figures/supplementary/01_figS1_atlas_qc_metrics_by_study.py` | `atlas/01_preprocess_qc/as_run/02_concat_qc_doublets.ipynb` → `figures/supplementary/00_figS1_extract_atlas_obs.py` | render SF1C_* -> SuppFig1c_*; scores from `atlas_concatenated_filtered.h5ad`; 0.25 cut = `atlas/01_preprocess_qc/as_run/03b_refilter_umap.py` |
+| S2a | `figures/supplementary/02_figS2a_atlas_study_umap.py` | — | SF2A_atlas_study_umap -> SuppFig2a_atlas_umap_by_study |
+| S2b | `figures/supplementary/03_figS2b_study_composition.py` | — | SF2B_atlas_integration_study_composition -> SuppFig2b_atlas_study_contribution_level1 |
+| S2c | `figures/supplementary/04_figS2c_per_study_umaps.py` | — | SF2C_atlas_integration_per_study_umaps -> SuppFig2c_atlas_per_study_umaps |
+| S3a | `figures/supplementary/05_figS3abc_clinical_umaps.py` | — | SF3_treatment_status -> SuppFig3a_atlas_umap_treatment_status |
+| S3b | `figures/supplementary/05_figS3abc_clinical_umaps.py` | — | SF3_anatomic_site -> SuppFig3b_atlas_umap_anatomic_site |
+| S3c | `figures/supplementary/05_figS3abc_clinical_umaps.py` | — | SF3_metastatic_site -> SuppFig3c_atlas_umap_metastatic_site |
+| S3d | `figures/supplementary/06_figS3def_genomic_umaps.py` | — | SF3_tp53_status -> SuppFig3d_atlas_umap_TP53_status |
+| S3e | `figures/supplementary/06_figS3def_genomic_umaps.py` | — | SF3_hrd_status -> SuppFig3e_atlas_umap_HRD_status |
+| S3f | `figures/supplementary/06_figS3def_genomic_umaps.py` | — | SF3_brca_status -> SuppFig3f_atlas_umap_BRCA_status |
+| S4a | `figures/supplementary/07_figS4a_annotation_validation.py` | `atlas/01_preprocess_qc/04_cellassign.py` → `atlas/01_preprocess_qc/07_finalize.py` → `figures/_prep/nath2021_fix.py` → `figures/_prep/atlas_final_tables.py` | plots final-atlas obs celltype_pred / celltype_probability (CellAssign, copied by `07_finalize.py`); SF4A_atlas_annotation_validation -> SuppFig4a_atlas_scanvi_prediction_probability |
+| S4b | `figures/supplementary/09_figS4b_canonical_markers_dotplot.py` | `figures/supplementary/08_figS4b_marker_stats.py` | marker stats streamed over all 1,980,703 cells (X); SF4B_* -> SuppFig4b_* |
+| S4c | `figures/supplementary/10_figS4c_cnv_aneuploid_by_state.py` | `figures/supplementary/10_figS4c_cnv_aneuploid_by_state.py` | deposited CopyKAT calls (`atlas/05_cnv/as_run/19_cnv_*`); writes `figures/supplementary/SuppFig4c_*` and `figures/supplementary/tables/SuppFig4c_*.csv` under `OUTPUT_ROOT` |
+| S5 | `figures/supplementary/11_figS5_nmf_factor_umaps.py` | — | deposited 11d usage; `tables/05_tableS5` parses FACTOR_NAMES from this script; SF5_* -> SuppFig5_* |
+| S6a | `figures/supplementary/12_figS6_secAB_expression_umaps.py` | — | Factor_3 + 7 SecA genes (epithelial X, `shared/signatures.yml`); SF6a_* -> SuppFig6a_* |
+| S6b | `figures/supplementary/12_figS6_secAB_expression_umaps.py` | — | Factor_2 + 7 SecB genes; SF6b_* -> SuppFig6b_* |
+| S7 | `figures/supplementary/13_figS7_cnv_clone_validation.py` | `figures/supplementary/13_figS7_cnv_clone_validation.py` | 378 subclones / 251 samples; 143 monoclonal / 54 clonally driven / 54 mixed (`per_sample_verdict.csv`); writes _prep_caches/sf7_cnv for the Discussion number; SF7_atlas_cnv_validation -> SuppFig7_atlas_clone_epitype_composition |
+| S8 | `figures/supplementary/14_figS8_functional_heatmap.py` | `figures/_prep/fig2a_scfea_all_cells.py` → `figures/_prep/fig2a_functional_state_summaries.py` → `figures/supplementary/14_figS8_functional_heatmap.py` | PROGENy 14 / Hallmark 50 / scFEA 165 / DoRothEA 294 (constant scFEA modules dropped); flux always from `fig2a_scfea_all_cells.py` |
+| S9a | `figures/supplementary/15_figS9_composition_by_metadata.py` | — | SF9a_atlas_epitype_by_treatment_status -> SuppFig9a_*; counts in `SF9_atlas_epitype_by_metadata_counts.csv` |
+| S9b | `figures/supplementary/15_figS9_composition_by_metadata.py` | — | SF9b_atlas_epitype_by_anatomic_site -> SuppFig9b_*; counts in `SF9_atlas_epitype_by_metadata_counts.csv` |
+| S9c | `figures/supplementary/15_figS9_composition_by_metadata.py` | — | SF9c_atlas_epitype_by_TP53_status -> SuppFig9c_*; counts in `SF9_atlas_epitype_by_metadata_counts.csv` |
+| S9d | `figures/supplementary/15_figS9_composition_by_metadata.py` | — | SF9d_atlas_epitype_by_HRD_status -> SuppFig9d_*; counts in `SF9_atlas_epitype_by_metadata_counts.csv` |
+| S9e | `figures/supplementary/15_figS9_composition_by_metadata.py` | — | SF9e_atlas_epitype_by_BRCA_status -> SuppFig9e_*; counts in `SF9_atlas_epitype_by_metadata_counts.csv` |
+| S9f | `figures/supplementary/15_figS9_composition_by_metadata.py` | — | Vazquez-Garcia labels from public GSE180661 cell table (download not scripted: [code missing]); SF9f_atlas_epitype_by_vazquez_garcia_annotation |
+| S9g | `figures/supplementary/15_figS9_composition_by_metadata.py` | ; `figures/supplementary/as_run/geistlinger_cell_annotations.R` | Geistlinger per-cell subtype from `geistlinger_cell_annotations.csv`; SF9g_atlas_epitype_by_geistlinger_annotation |
+| S10a | `figures/supplementary/16_figS10_kpca_mouse_vs_human_programs.py` | `models/kpca_mouse/scripts/02_orthologs.py` → `models/kpca_mouse/scripts/33_consolidate_handoff.py` → `tables/06_tableS6_secA_secB_signatures.py` → `figures/supplementary/16_figS10_kpca_mouse_vs_human_programs.py` | 12,429 KPCA.B tumour cells; atlas % expressing from Table S6 CSVs; mouse QC/annotation chain in `models/kpca_mouse/scripts` (01, 15b, 18, 24, 27); SF10_OUT unset -> writes SuppFig10a_* directly |
+| S10b | `figures/supplementary/16_figS10_kpca_mouse_vs_human_programs.py` | `models/kpca_mouse/scripts/02_orthologs.py` → `models/kpca_mouse/scripts/27b_epithelial_umap.py` → `models/kpca_mouse/scripts/33_consolidate_handoff.py` → `figures/supplementary/16_figS10_kpca_mouse_vs_human_programs.py` | orthologues expressed in >=20% of tumour cells; epi_umap_1/2 from 27b via the hand-off object |
+| S10c | `figures/supplementary/16_figS10_kpca_mouse_vs_human_programs.py` | `models/kpca_mouse/scripts/02_orthologs.py` → `models/kpca_mouse/scripts/31_fulltumour_nmf.py` → `models/kpca_mouse/scripts/32_identify_secb_align.py` → `figures/supplementary/16_figS10_kpca_mouse_vs_human_programs.py` | human loadings = deposited 11d (`atlas/03_epithelial_nmf/as_run/11d_epithelial_nmf.py`); permutation null + BH over 44 tests in 32 (helpers `04_mouse_nmf.py`, `05_crossspecies_alignment.py`); 16_ recomputes by NNLS and asserts |
+| S10d | `figures/supplementary/16_figS10_kpca_mouse_vs_human_programs.py` | `models/kpca_mouse/scripts/31_fulltumour_nmf.py` → `models/kpca_mouse/scripts/33_consolidate_handoff.py` → `figures/supplementary/16_figS10_kpca_mouse_vs_human_programs.py` | per-cell usage of the four KPCA.B programs on the tumour UMAP |
+| S11 | `figures/supplementary/17_figS11-13_xenium_celltype_maps.R` (mode wt) | SingleR tables → `tables/08_tableS8_xenium_cohort.py` → `figures/supplementary/17_figS11-13_xenium_celltype_maps.R` | 8 WT, 1,898,772 cells (count from `figures/figure4/01_fig4a_composition_table.py`); output folder SF10_SF11_singler; needs STUDY_CODE_KEY and the Table S8 whole-tissue CSV at `$OUTPUT_ROOT/final_panels/supplementary/tables`/ |
+| S12a | `figures/supplementary/17_figS11-13_xenium_celltype_maps.R` (mode tmaA) | SingleR tables → `spatial/02_qc/05b_core_qc.R` → `spatial/02_qc/06b_final_tma_cores.py` → `figures/supplementary/17_figS11-13_xenium_celltype_maps.R` | TMA A 95 patients / 177 cores (final core set from `06b_final_tma_cores.py`) |
+| S12b | `figures/supplementary/17_figS11-13_xenium_celltype_maps.R` (mode fte) | SingleR tables → `figures/supplementary/17_figS11-13_xenium_celltype_maps.R` | 15 FTE cores, 34,281 cells (count from `figures/figure4/01_fig4a_composition_table.py`) |
+| S13 | `figures/supplementary/17_figS11-13_xenium_celltype_maps.R` (mode tmaB) | SingleR tables → `spatial/02_qc/05b_core_qc.R` → `spatial/02_qc/06b_final_tma_cores.py` → `figures/supplementary/17_figS11-13_xenium_celltype_maps.R` | TMA B 283 patients / 326 cores, 43 two-core pairs |
+| S14 | `figures/supplementary/19_figS14_annotation_validation_plot.py` | SingleR tables → `spatial/02_qc/05b_core_qc.R` → `spatial/02_qc/06b_final_tma_cores.py` → `figures/supplementary/18_figS14_annotation_validation_extract.R` → `figures/supplementary/19_figS14_annotation_validation_plot.py` | writes SF12B_xenium_canonical_markers_dotplot, which is S14 (promoted SuppFig14b_*); dagger genes = `OUTPUT_ROOT/05_probe_qc/genes_exclude_singler.txt` (copy of `spatial/02_qc/as_run/explore_probe_qc.Rmd` output); reference = deposited `xenium_celltype_downsampled.h5ad` |
+| S15a | `figures/supplementary/20_figS15_polarization_distribution.py` | SingleR tables → `spatial/02_qc/05b_core_qc.R` → `spatial/02_qc/06b_final_tma_cores.py` → `figures/supplementary/20_figS15_polarization_distribution.py` | per-unit violins: 15 FTE cores, 8 WT, 378 TMA patients / 503 cores; `SF13_units.csv`; output folder SF13_singler; needs STUDY_CODE_KEY |
+| S15b | `figures/supplementary/20_figS15_polarization_distribution.py` | SingleR tables → `spatial/02_qc/05b_core_qc.R` → `spatial/02_qc/06b_final_tma_cores.py` → `figures/supplementary/20_figS15_polarization_distribution.py` | pooled per arm (`SF13_arms.csv`); same file as S15a (letter B added by `23_figS1-18_composites.py`) |
+| S16a | `figures/supplementary/22_figS16-18_per_sample_gams_plot.py` | SingleR tables → `spatial/04_pathway_scoring/04_pathway_scoring.R` → `spatial/04_pathway_scoring/04c_pathway_scoring_allcells.R` → `figures/figure4/08_fig4f_gam_features.R` → `figures/figure4/09_fig4f_gam_fit.R` → `tables/08_tableS8_xenium_cohort.py` → `figures/supplementary/21_figS16-18_per_sample_gams.R` | cell density; per-cell input `singler_gam_percell.csv`; per-tissue GAMs + paired Wilcoxon top vs bottom 20% (n = 8) in `per_sample_consistency.csv`; internal id SF14 |
+| S16b | `figures/supplementary/22_figS16-18_per_sample_gams_plot.py` | SingleR tables → `spatial/04_pathway_scoring/04_pathway_scoring.R` → `spatial/04_pathway_scoring/04c_pathway_scoring_allcells.R` → `figures/figure4/08_fig4f_gam_features.R` → `figures/figure4/09_fig4f_gam_fit.R` → `tables/08_tableS8_xenium_cohort.py` → `figures/supplementary/21_figS16-18_per_sample_gams.R` | distance to nearest vascular cell; per-cell input `singler_gam_percell.csv`; per-tissue GAMs + paired Wilcoxon top vs bottom 20% (n = 8) in `per_sample_consistency.csv`; internal id SF14 |
+| S16c | `figures/supplementary/22_figS16-18_per_sample_gams_plot.py` | SingleR tables → `spatial/04_pathway_scoring/04_pathway_scoring.R` → `spatial/04_pathway_scoring/04c_pathway_scoring_allcells.R` → `figures/figure4/08_fig4f_gam_features.R` → `figures/figure4/09_fig4f_gam_fit.R` → `tables/08_tableS8_xenium_cohort.py` → `figures/supplementary/21_figS16-18_per_sample_gams.R` | matrix remodeling (UCell); per-cell input `singler_gam_percell.csv`; per-tissue GAMs + paired Wilcoxon top vs bottom 20% (n = 8) in `per_sample_consistency.csv`; internal id SF14 |
+| S16d | `figures/supplementary/22_figS16-18_per_sample_gams_plot.py` | SingleR tables → `spatial/04_pathway_scoring/04_pathway_scoring.R` → `spatial/04_pathway_scoring/04c_pathway_scoring_allcells.R` → `figures/figure4/08_fig4f_gam_features.R` → `figures/figure4/09_fig4f_gam_fit.R` → `tables/08_tableS8_xenium_cohort.py` → `figures/supplementary/21_figS16-18_per_sample_gams.R` | neighborhood hypoxia (UCell); per-cell input `singler_gam_percell.csv`; per-tissue GAMs + paired Wilcoxon top vs bottom 20% (n = 8) in `per_sample_consistency.csv`; internal id SF14 |
+| S17a | `figures/supplementary/22_figS16-18_per_sample_gams_plot.py` | SingleR tables → `spatial/04_pathway_scoring/04_pathway_scoring.R` → `spatial/04_pathway_scoring/04c_pathway_scoring_allcells.R` → `figures/figure5/01_fig5a_epithelial_programs_build.R` → `figures/figure5/02_fig5a_epithelial_programs_fit.R` → `tables/08_tableS8_xenium_cohort.py` → `figures/supplementary/21_figS16-18_per_sample_gams.R` | proliferation (UCell); fig5a per-cell table; internal id SF15 |
+| S17b | `figures/supplementary/22_figS16-18_per_sample_gams_plot.py` | SingleR tables → `spatial/04_pathway_scoring/04_pathway_scoring.R` → `spatial/04_pathway_scoring/04c_pathway_scoring_allcells.R` → `figures/figure5/01_fig5a_epithelial_programs_build.R` → `figures/figure5/02_fig5a_epithelial_programs_fit.R` → `tables/08_tableS8_xenium_cohort.py` → `figures/supplementary/21_figS16-18_per_sample_gams.R` | Myc (UCell); SFE pathway_myc_activating; internal id SF15 |
+| S17c | `figures/supplementary/22_figS16-18_per_sample_gams_plot.py` | SingleR tables → `spatial/04_pathway_scoring/04_pathway_scoring.R` → `spatial/04_pathway_scoring/04c_pathway_scoring_allcells.R` → `figures/figure5/01_fig5a_epithelial_programs_build.R` → `figures/figure5/02_fig5a_epithelial_programs_fit.R` → `tables/08_tableS8_xenium_cohort.py` → `figures/supplementary/21_figS16-18_per_sample_gams.R` | PI3K (UCell); SFE pathway_pi3k_activating; internal id SF15 |
+| S17d | `figures/supplementary/22_figS16-18_per_sample_gams_plot.py` | SingleR tables → `spatial/04_pathway_scoring/04_pathway_scoring.R` → `spatial/04_pathway_scoring/04c_pathway_scoring_allcells.R` → `figures/figure5/01_fig5a_epithelial_programs_build.R` → `figures/figure5/02_fig5a_epithelial_programs_fit.R` → `tables/08_tableS8_xenium_cohort.py` → `figures/supplementary/21_figS16-18_per_sample_gams.R` | Wnt (UCell); SFE pathway_wnt_activating; internal id SF15 |
+| S17e | `figures/supplementary/22_figS16-18_per_sample_gams_plot.py` | SingleR tables → `spatial/04_pathway_scoring/04_pathway_scoring.R` → `spatial/04_pathway_scoring/04c_pathway_scoring_allcells.R` → `figures/figure5/01_fig5a_epithelial_programs_build.R` → `figures/figure5/02_fig5a_epithelial_programs_fit.R` → `tables/08_tableS8_xenium_cohort.py` → `figures/supplementary/21_figS16-18_per_sample_gams.R` | DNA damage repair (UCell); fig5a per-cell table; internal id SF15 |
+| S17f | `figures/supplementary/22_figS16-18_per_sample_gams_plot.py` | SingleR tables → `spatial/04_pathway_scoring/04_pathway_scoring.R` → `spatial/04_pathway_scoring/04c_pathway_scoring_allcells.R` → `figures/figure5/01_fig5a_epithelial_programs_build.R` → `figures/figure5/02_fig5a_epithelial_programs_fit.R` → `tables/08_tableS8_xenium_cohort.py` → `figures/supplementary/21_figS16-18_per_sample_gams.R` | NF-kB (UCell); fig5a per-cell table; internal id SF15 |
+| S17g | `figures/supplementary/22_figS16-18_per_sample_gams_plot.py` | SingleR tables → `spatial/04_pathway_scoring/04_pathway_scoring.R` → `spatial/04_pathway_scoring/04c_pathway_scoring_allcells.R` → `figures/figure5/01_fig5a_epithelial_programs_build.R` → `figures/figure5/02_fig5a_epithelial_programs_fit.R` → `tables/08_tableS8_xenium_cohort.py` → `figures/supplementary/21_figS16-18_per_sample_gams.R` | glycolysis (UCell); fig5a per-cell table; internal id SF15 |
+| S17h | `figures/supplementary/22_figS16-18_per_sample_gams_plot.py` | SingleR tables → `spatial/04_pathway_scoring/04_pathway_scoring.R` → `spatial/04_pathway_scoring/04c_pathway_scoring_allcells.R` → `figures/figure5/01_fig5a_epithelial_programs_build.R` → `figures/figure5/02_fig5a_epithelial_programs_fit.R` → `tables/08_tableS8_xenium_cohort.py` → `figures/supplementary/21_figS16-18_per_sample_gams.R` | IL32; log1p CP10k from SFE counts; internal id SF15 |
+| S17i | `figures/supplementary/22_figS16-18_per_sample_gams_plot.py` | SingleR tables → `spatial/04_pathway_scoring/04_pathway_scoring.R` → `spatial/04_pathway_scoring/04c_pathway_scoring_allcells.R` → `figures/figure5/01_fig5a_epithelial_programs_build.R` → `figures/figure5/02_fig5a_epithelial_programs_fit.R` → `tables/08_tableS8_xenium_cohort.py` → `figures/supplementary/21_figS16-18_per_sample_gams.R` | CD55; log1p CP10k from SFE counts; internal id SF15 |
+| S17j | `figures/supplementary/22_figS16-18_per_sample_gams_plot.py` | SingleR tables → `spatial/04_pathway_scoring/04_pathway_scoring.R` → `spatial/04_pathway_scoring/04c_pathway_scoring_allcells.R` → `figures/figure5/01_fig5a_epithelial_programs_build.R` → `figures/figure5/02_fig5a_epithelial_programs_fit.R` → `tables/08_tableS8_xenium_cohort.py` → `figures/supplementary/21_figS16-18_per_sample_gams.R` | LDHA; logcounts from fig5a per-cell table; internal id SF15 |
+| S17k | `figures/supplementary/22_figS16-18_per_sample_gams_plot.py` | SingleR tables → `spatial/04_pathway_scoring/04_pathway_scoring.R` → `spatial/04_pathway_scoring/04c_pathway_scoring_allcells.R` → `figures/figure5/01_fig5a_epithelial_programs_build.R` → `figures/figure5/02_fig5a_epithelial_programs_fit.R` → `tables/08_tableS8_xenium_cohort.py` → `figures/supplementary/21_figS16-18_per_sample_gams.R` | CTNNB1; log1p CP10k from SFE counts; internal id SF15 |
+| S17l | `figures/supplementary/22_figS16-18_per_sample_gams_plot.py` | SingleR tables → `spatial/04_pathway_scoring/04_pathway_scoring.R` → `spatial/04_pathway_scoring/04c_pathway_scoring_allcells.R` → `figures/figure5/01_fig5a_epithelial_programs_build.R` → `figures/figure5/02_fig5a_epithelial_programs_fit.R` → `tables/08_tableS8_xenium_cohort.py` → `figures/supplementary/21_figS16-18_per_sample_gams.R` | ICAM1; log1p CP10k from SFE counts; internal id SF15 |
+| S17m | `figures/supplementary/22_figS16-18_per_sample_gams_plot.py` | SingleR tables → `spatial/04_pathway_scoring/04_pathway_scoring.R` → `spatial/04_pathway_scoring/04c_pathway_scoring_allcells.R` → `figures/figure5/01_fig5a_epithelial_programs_build.R` → `figures/figure5/02_fig5a_epithelial_programs_fit.R` → `tables/08_tableS8_xenium_cohort.py` → `figures/supplementary/21_figS16-18_per_sample_gams.R` | MMP7; log1p CP10k from SFE counts; internal id SF15 |
+| S17n | `figures/supplementary/22_figS16-18_per_sample_gams_plot.py` | SingleR tables → `spatial/04_pathway_scoring/04_pathway_scoring.R` → `spatial/04_pathway_scoring/04c_pathway_scoring_allcells.R` → `figures/figure5/01_fig5a_epithelial_programs_build.R` → `figures/figure5/02_fig5a_epithelial_programs_fit.R` → `tables/08_tableS8_xenium_cohort.py` → `figures/supplementary/21_figS16-18_per_sample_gams.R` | TGM2; log1p CP10k from SFE counts; internal id SF15 |
+| S18a | `figures/supplementary/22_figS16-18_per_sample_gams_plot.py` | SingleR tables → `spatial/04_pathway_scoring/04_pathway_scoring.R` → `spatial/04_pathway_scoring/04c_pathway_scoring_allcells.R` → `figures/figure5/08_fig5i_macrophage_programs_build.R` → `figures/figure5/09_fig5i_macrophage_programs_fit.R` → `tables/08_tableS8_xenium_cohort.py` → `figures/supplementary/21_figS16-18_per_sample_gams.R` | glycolysis (UCell); `fig5e_macrophage_percell_presplit.csv`; x = local epithelial polarization within 50 um (nb_pol); internal id SF16 |
+| S18b | `figures/supplementary/22_figS16-18_per_sample_gams_plot.py` | SingleR tables → `spatial/04_pathway_scoring/04_pathway_scoring.R` → `spatial/04_pathway_scoring/04c_pathway_scoring_allcells.R` → `figures/figure5/08_fig5i_macrophage_programs_build.R` → `figures/figure5/09_fig5i_macrophage_programs_fit.R` → `tables/08_tableS8_xenium_cohort.py` → `figures/supplementary/21_figS16-18_per_sample_gams.R` | NF-kB activation (UCell); `fig5e_macrophage_percell_presplit.csv`; x = local epithelial polarization within 50 um (nb_pol); internal id SF16 |
+| S18c | `figures/supplementary/22_figS16-18_per_sample_gams_plot.py` | SingleR tables → `spatial/04_pathway_scoring/04_pathway_scoring.R` → `spatial/04_pathway_scoring/04c_pathway_scoring_allcells.R` → `figures/figure5/08_fig5i_macrophage_programs_build.R` → `figures/figure5/09_fig5i_macrophage_programs_fit.R` → `tables/08_tableS8_xenium_cohort.py` → `figures/supplementary/21_figS16-18_per_sample_gams.R` | A2M; log1p CP10k from SFE counts; x = local epithelial polarization within 50 um (nb_pol); internal id SF16 |
+| S18d | `figures/supplementary/22_figS16-18_per_sample_gams_plot.py` | SingleR tables → `spatial/04_pathway_scoring/04_pathway_scoring.R` → `spatial/04_pathway_scoring/04c_pathway_scoring_allcells.R` → `figures/figure5/08_fig5i_macrophage_programs_build.R` → `figures/figure5/09_fig5i_macrophage_programs_fit.R` → `tables/08_tableS8_xenium_cohort.py` → `figures/supplementary/21_figS16-18_per_sample_gams.R` | C1QC; log1p CP10k from SFE counts; x = local epithelial polarization within 50 um (nb_pol); internal id SF16 |
+| S18e | `figures/supplementary/22_figS16-18_per_sample_gams_plot.py` | SingleR tables → `spatial/04_pathway_scoring/04_pathway_scoring.R` → `spatial/04_pathway_scoring/04c_pathway_scoring_allcells.R` → `figures/figure5/08_fig5i_macrophage_programs_build.R` → `figures/figure5/09_fig5i_macrophage_programs_fit.R` → `tables/08_tableS8_xenium_cohort.py` → `figures/supplementary/21_figS16-18_per_sample_gams.R` | CXCL10; log1p CP10k from SFE counts; x = local epithelial polarization within 50 um (nb_pol); internal id SF16 |
+| S18f | `figures/supplementary/22_figS16-18_per_sample_gams_plot.py` | SingleR tables → `spatial/04_pathway_scoring/04_pathway_scoring.R` → `spatial/04_pathway_scoring/04c_pathway_scoring_allcells.R` → `figures/figure5/08_fig5i_macrophage_programs_build.R` → `figures/figure5/09_fig5i_macrophage_programs_fit.R` → `tables/08_tableS8_xenium_cohort.py` → `figures/supplementary/21_figS16-18_per_sample_gams.R` | CXCL11; log1p CP10k from SFE counts; x = local epithelial polarization within 50 um (nb_pol); internal id SF16 |
+| S18g | `figures/supplementary/22_figS16-18_per_sample_gams_plot.py` | SingleR tables → `spatial/04_pathway_scoring/04_pathway_scoring.R` → `spatial/04_pathway_scoring/04c_pathway_scoring_allcells.R` → `figures/figure5/08_fig5i_macrophage_programs_build.R` → `figures/figure5/09_fig5i_macrophage_programs_fit.R` → `tables/08_tableS8_xenium_cohort.py` → `figures/supplementary/21_figS16-18_per_sample_gams.R` | CTSL; log1p CP10k from SFE counts; x = local epithelial polarization within 50 um (nb_pol); internal id SF16 |
+| S18h | `figures/supplementary/22_figS16-18_per_sample_gams_plot.py` | SingleR tables → `spatial/04_pathway_scoring/04_pathway_scoring.R` → `spatial/04_pathway_scoring/04c_pathway_scoring_allcells.R` → `figures/figure5/08_fig5i_macrophage_programs_build.R` → `figures/figure5/09_fig5i_macrophage_programs_fit.R` → `tables/08_tableS8_xenium_cohort.py` → `figures/supplementary/21_figS16-18_per_sample_gams.R` | ICAM1; log1p CP10k from SFE counts; x = local epithelial polarization within 50 um (nb_pol); internal id SF16 |
+
+## Supplementary Tables S1–S12
+
+Folder: [`tables/`](../tables/README.md). `tables/build_all_tables.sh` builds all twelve in order.
+
+| Table | Written by | Computed by (run order) | Note |
+|---|---|---|---|
+| S1 | `tables/01_tableS1_atlas_studies.py` | `figures/_prep/nath2021_fix.py`; [original per-cell export: code missing] + `atlas/02_annotation/as_run/fix_metastatic_site_docs.py` | 13 studies, 158 patients, 362 samples |
+| S2–S4 | `tables/02_tableS2-4_annotation_markers.py` | `atlas/02_annotation/as_run/*` (S2 markers: `xenium_coverage_report_level1.py`) ; [S4 export: code missing] |  |
+| S5 | `tables/05_tableS5_epithelial_nmf_programs.py` | `atlas/03_epithelial_nmf/as_run/11d`, `atlas/03_epithelial_nmf/as_run/11e`, `atlas/03_epithelial_nmf/as_run/11f`, `atlas/03_epithelial_nmf/as_run/11g` |  |
+| S6 | `tables/06_tableS6_secA_secB_signatures.py` | `atlas/03_epithelial_nmf/as_run/11d`, `atlas/03_epithelial_nmf/as_run/11e`, `atlas/03_epithelial_nmf/as_run/18a`, `atlas/03_epithelial_nmf/as_run/18b` + `figures/figure2/04_fig2g_pseudobulk_volcano.py` + `tables/as_run/generate_xenium_gene_panel_table.R` |  |
+| S7 | `tables/07_tableS7_xenium_gene_panel.py` | `spatial/02_qc/as_run/explore_probe_qc.Rmd` → `spatial/03_annotation_polarization/01_annotation_singler.R` | 477 genes; 28 excluded; 429 used |
+| S8 | `tables/08_tableS8_xenium_cohort.py` | `spatial/02_qc/05b_core_qc.R` → `spatial/02_qc/06b_final_tma_cores.py` → clinical chain as Fig 7a–d | 378 patients / 503 cores |
+| S9 | `tables/09_tableS9_ucell_gene_sets.py` | `spatial/04_pathway_scoring/04`, `spatial/04_pathway_scoring/04b`, `spatial/04_pathway_scoring/04c` | 37 modules |
+| S10 | `tables/10_tableS10_secb_niche_macrophage_degs.py` | `figures/figure6/01` → 02 (16, 8 µm); `spatial/05_count_export/as_run/02_deg_precompute.R` → `figures/figure6/04` |  |
+| S11 | `tables/11_tableS11_xenium_tma_cox.py` | `figures/figure7/01` → 02 |  |
+| S12 | `tables/12_tableS12_icon7_cox.py` | `icon7/scripts/01`–04, 15 → `figures/figure7/06` | models A–D |
+
+## Numbers in the text
+
+Numbers quoted in the Results, Discussion and Methods that are not read off a panel.
+
+| Number | Computed by (run order) | Printed or drawn by | Note |
+|---|---|---|---|
+| 1,980,703 cells (1.98 million) from 13 studies, 158 patients | `figures/figure1/02_fig1bcdek_atlas_study_contribution.py` | - | printed by 02_fig1bcdek; 158 patients after the Nath 2021 relabelling; also Table S1 Total row (`tables/01_tableS1_atlas_studies.py`) |
+| 362 samples; 12 anatomic sites | — | `tables/01_tableS1_atlas_studies.py` | distinct values in load_obs(); Table S1 Total row |
+| 13 lineages; 51 cell types and states | `atlas/02_annotation/as_run/06_celltype_level1_leiden.py` → `atlas/02_annotation/as_run/06b_remap_level1.py` → `atlas/02_annotation/as_run/08_finalize_celltype_level2.py` → `atlas/02_annotation/as_run/08b_rename_level2_labels.py` → `atlas/02_annotation/as_run/08c_rename_level2_labels_v2.py` → `atlas/02_annotation/as_run/09d_publication_figures.py` → `figures/_prep/nath2021_fix.py` → `figures/_prep/atlas_final_tables.py` | `tables/02_tableS2-4_annotation_markers.py` | 51 asserted in the Table S2-S4 builder |
+| 575,366 epithelial cells; 6,678 ciliated (1.2%) | — | - | asserted in `figures/_prep/atlas_final_tables.py` |
+| PC1 in 54% of samples, PC1-3 in 82% (Methods: 250 samples) | `figures/_prep/fig1g_polarization_pc_alignment.py` → `figures/figure1/04_fig1g_polarization_pc_alignment.py` | `figures/figure1/04_fig1g_polarization_pc_alignment.py` | `atlas_polarization_pc_alignment_data.csv`; >=150 aneuploid epithelial cells per sample |
+| Methods 14,470 shared genes; <500 UMIs, <300 genes, samples <500 cells, Scrublet | `atlas/01_preprocess_qc/as_run/01_dataprep.ipynb` → `atlas/01_preprocess_qc/as_run/02_concat_qc_doublets.ipynb` → `atlas/01_preprocess_qc/as_run/03b_refilter_umap.py` | - | Scrublet <0.3 per sample, then <0.25 after integration (S1c line); artifact clusters removed in `atlas/02_annotation/as_run/06_celltype_level1_leiden.py` |
+| Methods scVI/scANVI (batch = sample) seeded with CellAssign | `atlas/01_preprocess_qc/03_preprocess_hvg.py` → `atlas/01_preprocess_qc/04_cellassign.py` → `atlas/01_preprocess_qc/05a_integrate_scvi.py` → `atlas/01_preprocess_qc/05b_integrate_scanvi.py` → `atlas/01_preprocess_qc/07_finalize.py` | - | GPU cluster scripts (E4); deposited run pre-processing and integration/20260213_integration/output; MrVI/SysVI/Harmony/benchmark not included |
+| Methods NMF k = 10 on a stratified ~50,000-cell set, applied to 575,366 cells | `atlas/03_epithelial_nmf/as_run/11d_epithelial_nmf.py` → `atlas/03_epithelial_nmf/01_epithelial_nmf.py` → `atlas/03_epithelial_nmf/01b_verify_against_deposited.py` | - | 3,007 genes; training draw 49,997 epithelial cells stratified by level-2 type; port matches deposit within 1e-13 |
+| Methods states SecA <p50, Intermediate, SecB >=p75 of Factor 2 | — | - | 284,344 / 142,172 / 142,172 (+ 6,678 ciliated) asserted in `atlas_final_tables.py` |
+| Methods CopyKAT >=200 epithelial and >=50 reference cells; subclones >=20 cells | `atlas/05_cnv/as_run/19_cnv_extract.py` → `atlas/05_cnv/as_run/19_cnv_copykat.R` → `figures/supplementary/13_figS7_cnv_clone_validation.py` | - | driven by as_run/19_cnv_run.sh or `19_cnv_bundle.sh` + `19_cnv_slurm.sh`; 251 samples; >=20-cell clone rule applied in the figure scripts |
+| Methods PROGENy/DoRothEA (decoupler MLM), Hallmark, scFEA (M168) | `atlas/04_functional/as_run/21_epitype_functional_characterization.py` → `figures/_prep/fig2a_scfea_all_cells.py` → `figures/_prep/fig2a_functional_state_summaries.py` | - | - |
+| Methods cell-cycle phase with scanpy | `figures/_prep/fig2b_cell_cycle_phase.py` | - | Tirosh S / G2M lists, score_genes_cell_cycle |
+| Results SecA 37.8% S/G2M; SecB 80.6% G1 | `figures/_prep/fig2b_cell_cycle_phase.py` → `figures/figure2/02_fig2bcde_cellcycle_composition_paired.py` | `figures/figure2/02_fig2bcde_cellcycle_composition_paired.py` | `row2_stats.csv` panel b |
+| Results ascites 68% SecB vs primary 14% and metastases 17% | `figures/_prep/fig2b_cell_cycle_phase.py` → `figures/figure2/02_fig2bcde_cellcycle_composition_paired.py` | `figures/figure2/02_fig2bcde_cellcycle_composition_paired.py` | `row2_stats.csv` panel c |
+| Results n = 14 matched; median 60.7% ascites vs 10.2% primary | `figures/_prep/fig2b_cell_cycle_phase.py` → `figures/figure2/02_fig2bcde_cellcycle_composition_paired.py` | `figures/figure2/02_fig2bcde_cellcycle_composition_paired.py` | `row2_stats.csv` panel d |
+| Results SecA 60% -> 53%, SecB 14% -> 24% post-chemotherapy | `figures/_prep/fig2b_cell_cycle_phase.py` → `figures/figure2/02_fig2bcde_cellcycle_composition_paired.py` | `figures/figure2/02_fig2bcde_cellcycle_composition_paired.py` | `row2_stats.csv` panel c |
+| Results SecB rose in 12 of 18; 58% -> 69%; p = 0.11 | `figures/_prep/fig2b_cell_cycle_phase.py` → `figures/figure2/02_fig2bcde_cellcycle_composition_paired.py` | `figures/figure2/02_fig2bcde_cellcycle_composition_paired.py` | `row2_e_variant_secb_pct_stats.csv` |
+| Discussion 68% vs 14% in primary tumors | `figures/_prep/fig2b_cell_cycle_phase.py` → `figures/figure2/02_fig2bcde_cellcycle_composition_paired.py` | `figures/figure2/02_fig2bcde_cellcycle_composition_paired.py` | repeat of Fig 2c numbers (`row2_stats.csv` panel c) |
+| Discussion SecB rose after treatment in 12 of 18 patient-matched samples | `figures/_prep/fig2b_cell_cycle_phase.py` → `figures/figure2/02_fig2bcde_cellcycle_composition_paired.py` | `figures/figure2/02_fig2bcde_cellcycle_composition_paired.py` | repeat of Fig 2e (`row2_e_variant_secb_pct_stats.csv`) |
+| Methods consensusOV 96 samples / 77 patients; Results SecA medians 76% / 75% / 38% / 37% | `figures/_prep/fig2f_consensusov.py` → `figures/_prep/fig2f_consensusov.R` → `figures/_prep/fig2f_consensusov_multiseed.R` → `figures/figure2/03_fig2f_subtype_state_boxes.py` | `figures/figure2/03_fig2f_subtype_state_boxes.py` | 96/77 asserted in `fig2f_consensusov.py`; final calls = 25-seed consensus; medians from the per-sample table / stats CSV |
+| Methods PyDESeq2 n = 261 samples (legend 522 profiles / 261 tumours), 135 patients | `figures/figure2/04_fig2g_pseudobulk_volcano.py` | `figures/figure2/04_fig2g_pseudobulk_volcano.py` | 261 / 522 asserted; 135 patients is not printed by any script |
+| Methods organoid UCell gene space 14,271 genes | `atlas/03_epithelial_nmf/as_run/17_prepare_nmf_labels.py` → `atlas/03_epithelial_nmf/as_run/18a_ucell_atlas_export.py` → `atlas/03_epithelial_nmf/as_run/18b_ucell_atlas_scoring.R` | - | output/18_ucell_atlas/shared_gene_list.txt |
+| Methods TCGA score = 177 SecB - 177 SecA NMF-specific genes | `atlas/03_epithelial_nmf/as_run/11e_nmf_characterization.py` → `atlas/07_deconvolution_survival/as_run/22d_signature_survival.py` | `figures/figure7/05_fig7ghij_tcga_km_forest.R` | `11e_gene_classification.csv`; deposited `22d_signature_scores.csv` |
+| Methods TCGA Cox adjusted for epithelial fraction (BayesPrism) | `atlas/07_deconvolution_survival/as_run/22a_cibersort_reference_v2.py` → `atlas/07_deconvolution_survival/as_run/22b_bayesprism_deconv.R` → `atlas/07_deconvolution_survival/as_run/22d_signature_survival.py` → `figures/figure7/05_fig7ghij_tcga_km_forest.R` | `figures/figure7/05_fig7ghij_tcga_km_forest.R` | TCGA input preparation [code missing] |
+| Discussion 93.5% of patients with >=100 epithelial cells contain SecA, Intermediate and SecB | `figures/supplementary/13_figS7_cnv_clone_validation.py` → `figures/_prep/text_state_coexistence.py` | - | 144 of 154 patients (>=5 cells of each state); `text_state_coexistence.csv` |
+| (not quoted) 356 of 378 CopyKAT clones hold all three states | `figures/supplementary/13_figS7_cnv_clone_validation.py` → `figures/_prep/text_state_coexistence.py` | - | clone row of `text_state_coexistence.csv` |
+| Figure S7 legend 378 subclones / 251 samples; 143 / 54 / 54 | `figures/supplementary/13_figS7_cnv_clone_validation.py` | `figures/supplementary/13_figS7_cnv_clone_validation.py` | `per_sample_verdict.csv` |
+| Figure S8 legend 14 / 50 / 165 / 294 features | `figures/_prep/fig2a_scfea_all_cells.py` → `figures/_prep/fig2a_functional_state_summaries.py` → `figures/supplementary/14_figS8_functional_heatmap.py` | `figures/supplementary/14_figS8_functional_heatmap.py` | constant scFEA modules dropped |
+| Results p = 0.003 HGSC vs FTE (Figure S15) | SingleR tables → `spatial/02_qc/05b_core_qc.R` → `spatial/02_qc/06b_final_tma_cores.py` → `figures/supplementary/20_figS15_polarization_distribution.py` | `figures/supplementary/20_figS15_polarization_distribution.py` | `SF13_tests.csv` (promoted `SuppFig15_fte_vs_hgsc_polarization_tests.csv`); two-sided Mann-Whitney on per-unit median polarization |
+| Figure S16/S17 legends 1,235,350 secretory cells | SingleR tables → `spatial/04_pathway_scoring/04_pathway_scoring.R` → `spatial/04_pathway_scoring/04c_pathway_scoring_allcells.R` → `figures/figure4/08_fig4f_gam_features.R` → `figures/supplementary/21_figS16-18_per_sample_gams.R` | `figures/supplementary/22_figS16-18_per_sample_gams_plot.py` | rows of `singler_gam_percell.csv`; n_cells in `SuppFig16-18_per_sample_consistency.csv` |
+| Figure S11 legend 1,898,772 whole-tissue cells | SingleR tables → `figures/figure4/01_fig4a_composition_table.py` | `figures/supplementary/17_figS11-13_xenium_celltype_maps.R` |  |
+| Figure S12/S13 legends 95 / 177 (TMA A), 283 / 326 / 43 pairs (TMA B), 15 FTE cores / 34,281 cells | SingleR tables → `spatial/02_qc/05b_core_qc.R` → `spatial/02_qc/06b_final_tma_cores.py` → `figures/figure4/01_fig4a_composition_table.py` | `figures/supplementary/17_figS11-13_xenium_celltype_maps.R` | core and patient counts from `06b_final_tma_cores.py`; FTE cells from the Fig 4a table |
+| < 1% of PDO cells reach the SecB threshold | `models/organoids/scripts/04_secretory_polarization_v4_UCell_aligned.R` → `04v4_comparison_report.py` | — | 11 of 10,455 cells |
+| OPTO98 decline over days, IFNγ, media (Fig 3c–e) | `models/organoids/scripts/08_opto98_ucell_aligned.R` → `08b_opto98_condition_comparison.py` | — | `opto98_statistical_tests.csv` |
+| 378 patients, 503 cores, 1,542,448 cells | `spatial/02_qc/05b_core_qc.R` (per array) → `spatial/02_qc/06b_final_tma_cores.py` | — | `final_tma_counts.csv` |
+| whole tissues 1,898,772 cells; 15 FTE cores (34,281 cells) | `06_extract_singler.R` → `figures/figure4/01_fig4a_composition_table.py` | — | also Table S8 |
+| thresholds SecA ≤ 0.109429, SecB ≥ 0.210501 | `spatial/03_annotation_polarization/03_ucell_scoring_noBCAM.R` → `04_reclassification_polarization.R` | — |  |
+| 28 genes excluded from annotation | `spatial/02_qc/as_run/explore_probe_qc.Rmd` | — | Table S7 |
+| HGSC vs FTE polarization p = 0.003 (Figure S15) | `06_extract_singler.R` → `06b_final_tma_cores.py` | `figures/supplementary/20_figS15_polarization_distribution.py` |  |
+| twice the proportion of SecB neighbours (Fig 6g) | `figures/figure6/06_fig6g_macrophage_secB_neighbours.py` | — | WT 7.9 → 15.2%, TMA 4.0 → 7.7% |
+| contact-associated BIRC3, LGALS9, ICAM1 | `figures/figure6/04` → `05_fig6fh_xenium_reciprocal_effects.R` | — | 30 µm contact; n = 8 |
+| ICON7 interaction HR 0.44, LRT p = 0.025 | `icon7/scripts/04_descriptive.R` | `tables/12_tableS12_icon7_cox.py` | Table S12 model D |
+| ICON7 standard-arm OS HR per SD | `icon7/scripts/15_chemo_arm_analysis.R` (section B.2) | `tables/12_tableS12_icon7_cox.py` | Table S12 model A |
